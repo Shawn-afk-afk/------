@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExamCrafter AI - 多科目智慧教材出卷與評量系統</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- 頂部導航列 -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">E</div>
+      <div class="brand-text">
+        <h1>ExamCrafter AI</h1>
+        <p>多科目智慧教材出卷系統 (國中/高中 108 課綱)</p>
+      </div>
+    </div>
+    <div class="nav-status">
+      <div class="status-badge">
+        <span id="ollama-dot" class="status-dot"></span>
+        <span id="ollama-status-text">連線檢測中...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="main-container">
+
+    <!-- 步驟導引指示器 -->
+    <nav class="steps-nav">
+      <div class="step-item active" onclick="switchStep(1)">
+        <div class="step-num">1</div>
+        <div class="step-info">
+          <h3>步驟一：參數與大題設定</h3>
+          <p>選定科目、範圍與大題配分</p>
+        </div>
+      </div>
+      <div class="step-item" onclick="switchStep(2)">
+        <div class="step-num">2</div>
+        <div class="step-info">
+          <h3>步驟二：線上審題與微調</h3>
+          <p>即時預覽考題、一鍵抽換</p>
+        </div>
+      </div>
+      <div class="step-item" onclick="switchStep(3)">
+        <div class="step-num">3</div>
+        <div class="step-info">
+          <h3>步驟三：一鍵三合一匯出</h3>
+          <p>下載試題卷、作答紙與詳解本</p>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- 視圖 1：參數設定與大題配置 (Step 1) -->
+    <!-- ========================================== -->
+    <section id="panel-step-1" class="view-panel active">
+      
+      <!-- 基本考試設定 -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">📋 考試基本資訊</h2>
+        </div>
+        <div class="grid-2col">
+          <div class="form-group">
+            <label class="form-label">選擇測驗科目</label>
+            <select id="subject-select" class="form-select">
+              <option value="English">英語科 (English)</option>
+              <option value="Geography">地理科 (Geography)</option>
+              <option value="History">歷史科 (History)</option>
+              <option value="Civics">公民科 (Civics)</option>
+              <option value="Chinese">國文科 (Chinese)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">測驗時間 (分鐘)</label>
+            <input type="number" id="exam-time" class="form-control" value="45" min="10" max="120">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">考試完整名稱 (將呈現於試卷抬頭)</label>
+          <input type="text" id="exam-title" class="form-control" value="115學年度第一學期七年級英語科第二次定期評量試題本">
+        </div>
+      </div>
+
+      <!-- 教材匯入與出題範圍選取 (動態 RAG 知識庫) -->
+      <div class="card" id="card-textbook-import">
+        <div class="card-header">
+          <h2 class="card-title">📚 教材匯入與本次測驗範圍</h2>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn btn-primary" style="font-size: 0.85rem; padding: 0.38rem 0.9rem;" onclick="document.getElementById('tb-files-input').click()">📥 載入教材</button>
+            <button class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.35rem 0.8rem;" onclick="clearTextbooks()">🗑️ 清空教材</button>
+          </div>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.9rem;">
+          請先上傳本次考試所需之教材檔案（支援 PDF、Word、純文字檔）或直接貼上課文/單字重點。系統將自動完成知識點切片，供您勾選本次出題範圍。
+        </p>
+
+        <!-- 匯入模式切換頁籤 -->
+        <div class="mode-tabs" style="margin-bottom: 1rem;">
+          <button class="mode-tab active" id="tab-tb-upload" onclick="switchTextbookTab('upload')">📁 檔案上傳 (PDF / Word / TXT)</button>
+          <button class="mode-tab" id="tab-tb-paste" onclick="switchTextbookTab('paste')">📝 直接貼上教材文字內容</button>
+        </div>
+
+        <!-- 檔案上傳面板 -->
+        <div id="tb-upload-panel">
+          <div class="upload-dropzone" id="tb-dropzone" onclick="document.getElementById('tb-files-input').click()">
+            <div class="dropzone-icon">📂</div>
+            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem;">點擊或拖曳上傳本次考試所需教材檔案</h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">支援多檔案同時上傳 (.pdf, .docx, .txt)，系統將自動抽取各單元之單字、句型與課文</p>
+            <input type="file" id="tb-files-input" style="display: none;" multiple accept=".pdf,.docx,.doc,.txt">
+          </div>
+          <div id="tb-upload-status" style="margin-top: 0.75rem; font-size: 0.88rem;"></div>
+        </div>
+
+        <!-- 文字貼上組件面板 -->
+        <div id="tb-paste-panel" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">單元或課次名稱</label>
+            <input type="text" id="tb-paste-title" class="form-control" placeholder="例：Unit 1 Meeting New Friends 或 第一課 雅量">
+          </div>
+          <div class="form-group">
+            <label class="form-label">貼上課文、單字表或文法重點內容</label>
+            <textarea id="tb-paste-content" class="form-control" rows="6" placeholder="請在此貼上當下所需的課文段落、生字表或文法焦點..."></textarea>
+          </div>
+          <div style="display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="submitPastedTextbook()">📥 解析並加入出題範圍</button>
+          </div>
+          <div id="tb-paste-status" style="margin-top: 0.75rem; font-size: 0.88rem;"></div>
+        </div>
+
+        <!-- 已解析教材清單與勾選範圍 -->
+        <div style="margin-top: 1.5rem; border-top: 1px dashed var(--border-color); padding-top: 1.1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <label class="form-label" style="margin-bottom: 0; font-weight: 700;">本次測驗出題範圍 (已索引單元)：</label>
+              <span id="units-stats-badge" style="font-size: 0.82rem; color: #10b981; font-weight: 600;"></span>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn-sm-text" onclick="selectAllUnits(true)">✓ 全選</button>
+              <button class="btn-sm-text" onclick="selectAllUnits(false)">✕ 全取消</button>
+            </div>
+          </div>
+          
+          <div id="units-list-container" class="units-grid">
+            <!-- 由 JS 動態產生單元 Chips，無教材時呈現 empty-units-state -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 出題模式選擇：方案 A (自由調整) vs 方案 B (上傳克隆) -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">⚙️ 大題架構與出題模式</h2>
+        </div>
+
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="manual">【方案 A】預設模板自訂調整 (可增減大題/配分)</button>
+          <button class="mode-tab" data-mode="clone">【方案 B】上傳參考考卷克隆骨架 (Word/PDF)</button>
+        </div>
+
+        <!-- 方案 A 介面 -->
+        <div id="mode-manual-content">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            💡 您可以按住 <strong>☰</strong> 拖曳大題調整順序，直接點擊標題文字修改名稱，自訂題數與每題配分（不限 100 分，系統即時加總）。
+          </p>
+          <div id="section-list" class="section-list">
+            <!-- 由 JS 動態生成大題卡片 -->
+          </div>
+          <button class="btn btn-outline" onclick="addNewSection()">+ 新增自訂大題</button>
+        </div>
+
+        <!-- 方案 B 介面 -->
+        <div id="mode-clone-content" style="display: none;">
+          <div class="upload-dropzone" onclick="document.getElementById('clone-file-input').click()">
+            <div class="dropzone-icon">📄</div>
+            <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem;">點擊或拖曳上傳舊考卷參考模板 (.docx / .pdf)</h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">系統將自動讀取其大題標題、題型與配分，並自動回填至方案 A 介面供您確認</p>
+            <input type="file" id="clone-file-input" style="display: none;" accept=".pdf,.docx">
+          </div>
+          <div id="clone-status" style="margin-top: 1rem; font-size: 0.9rem;"></div>
+        </div>
+
+      </div>
+
+      <!-- 常駐即時算分與開始生成條 (Sticky Bar) -->
+      <div class="score-summary-bar">
+        <div class="score-stats">
+          <div>
+            <div id="stat-total-q" class="stat-item-val">0</div>
+            <div class="stat-item-lbl">預計總題數</div>
+          </div>
+          <div>
+            <div id="stat-total-score" class="stat-item-val">0</div>
+            <div class="stat-item-lbl">試卷目前總分</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;" onclick="startGenerateExam()">
+          🚀 開始生成考卷 (進入步驟二)
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 視圖 2：線上審題與微調面板 (Step 2) -->
+    <!-- ========================================== -->
+    <section id="panel-step-2" class="view-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🔍 題目生成與審題微調面板</h2>
+          <button class="btn btn-secondary" onclick="switchStep(1)">← 回步驟一修改設定</button>
+        </div>
+
+        <!-- 即時進度條 -->
+        <div id="gen-progress-box" class="progress-container">
+          <div class="progress-track">
+            <div id="gen-progress-fill" class="progress-fill"></div>
+          </div>
+          <div id="gen-progress-text" class="progress-text">準備生成中...</div>
+        </div>
+
+        <!-- 題目預覽清單 -->
+        <div id="generated-q-list"></div>
+
+        <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+          <button class="btn btn-secondary" onclick="switchStep(1)">重新設定</button>
+          <button id="btn-export-suite" class="btn btn-primary" onclick="exportWordSuite()">
+            📥 確認無誤，匯出成套 Word 檔 (進入步驟三)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 視圖 3：三合一文件匯出下載 (Step 3) -->
+    <!-- ========================================== -->
+    <section id="panel-step-3" class="view-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🎉 三合一考卷文件已就緒</h2>
+          <button class="btn btn-secondary" onclick="switchStep(2)">← 回步驟二審題</button>
+        </div>
+        <div id="download-links-box"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

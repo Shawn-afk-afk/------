@@ -1,0 +1,35 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Executables & Binaries (防止大檔案入庫)
+*.exe
+ngrok.exe
+cloudflared.exe
+
+# Output & Generated Exam Files
+output_exams/
+output_test/
+test_charts/
+uploads/
+scratch/
+*.docx
+!test_footer.docx
+
+# Large PDFs / 教材版權檔案保護 (避免 Public 倉庫侵權或檔案過大)
+B04_教師用書pdf檔/
+*.pdf
+
+# Environment & Secrets
+.env
+.env.*
+*.log
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,197 @@
+{
+  "metadata": {
+    "title": "115學年度第一學期八年級英語科第二次定期評量試題本",
+    "school": "市立國民中學",
+    "grade": "Grade 8",
+    "subject": "English",
+    "total_score": 100,
+    "total_questions": 12,
+    "time_minutes": 45,
+    "generation_mode": "Scheme_A_Manual"
+  },
+  "sections": [
+    {
+      "section_id": "sec_1",
+      "section_title": "一、 文意字彙與語法選擇 (第 1-5 題，每題 4 分，共 20 分)",
+      "section_type": "CHOICE",
+      "score_per_question": 4,
+      "total_section_score": 20,
+      "questions": [
+        {
+          "question_number": 1,
+          "bloom_level": "remembering",
+          "stem": "Rita _____ her dogs three times a day. That's why they are getting too fat.",
+          "options": {
+            "A": "feeds",
+            "B": "kisses",
+            "C": "walks",
+            "D": "washes"
+          },
+          "answer": "A",
+          "explanation": "依後文『那就是為什麼牠們變太胖了』，前文應選『餵食 (feeds)』，故選 (A)。"
+        },
+        {
+          "question_number": 2,
+          "bloom_level": "applying",
+          "stem": "It is difficult _____ Sam to wake up early on cold winter mornings.",
+          "options": {
+            "A": "for",
+            "B": "of",
+            "C": "with",
+            "D": "to"
+          },
+          "answer": "A",
+          "explanation": "句型為『It is + adj. + for sb. + to VR』，表示對某人而言做某事是困難的，故選 (A)。"
+        },
+        {
+          "question_number": 3,
+          "bloom_level": "understanding",
+          "stem": "Look at the floor plan below. Where is the milk placed to make shoppers walk more?",
+          "has_chart": true,
+          "chart_type": "supermarket_layout",
+          "chart_params": {},
+          "chart_path": "test_charts/market.png",
+          "options": {
+            "A": "Right near the entrance.",
+            "B": "Beside the checkout counter.",
+            "C": "At the very back of the store.",
+            "D": "Outside the glass doors."
+          },
+          "answer": "C",
+          "explanation": "根據超市內部平面地圖，牛奶等乳製品被放置在店鋪最深處 (Back Wall)，迫使顧客走遍全店，故選 (C)。"
+        },
+        {
+          "question_number": 4,
+          "bloom_level": "applying",
+          "stem": "I thought the friendly girl was Kate, but it was actually her twin sister, Candy.",
+          "options": {
+            "A": "answered the phone yesterday",
+            "B": "she answered the phone yesterday",
+            "C": "who answered the phone yesterday",
+            "D": "and answered the phone yesterday"
+          },
+          "answer": "C",
+          "explanation": "此處需要關係代名詞主格 who 引導關係子句修飾先行詞 the girl，故選 (C)。"
+        },
+        {
+          "question_number": 5,
+          "bloom_level": "analyzing",
+          "stem": "Which of the following questions can best be answered by looking at the environmental data?",
+          "options": {
+            "A": "How many plastic bags did the students use before they started the reduction plan?",
+            "B": "Why did the school decide to cancel all outdoor sports events during winter?",
+            "C": "Who was the first teacher to introduce modern music into the rural elementary school?",
+            "D": "What time will the morning express train arrive at the central railway station?"
+          },
+          "answer": "A",
+          "explanation": "只有選項 (A) 的塑膠袋減量數據與環保議題直接相關，其餘皆為無關選項，故選 (A)。"
+        }
+      ]
+    },
+    {
+      "section_id": "sec_2",
+      "section_title": "二、 閱讀題組 (第 6-8 題，每題 10 分，共 30 分)",
+      "section_type": "GROUP_PASSAGE",
+      "score_per_question": 10,
+      "total_section_score": 30,
+      "passages": [
+        {
+          "passage_id": "P01",
+          "range_str": "6-8",
+          "title": "SDGs in Action: Plastic Bag Reduction",
+          "content": "In our two-week environmental project, students tracked their daily habits. In the first week, an average student used 14 plastic bags. By the third week, after carrying eco-friendly reusable shopping bags, the number dropped down to 2 bags per week! Small everyday actions truly bring huge triumphs.",
+          "has_chart": true,
+          "chart_type": "sdg_bar_chart",
+          "chart_params": {},
+          "chart_path": "test_charts/sdg.png",
+          "footnotes": [
+            {"word": "triumph", "meaning": "勝利/成就"},
+            {"word": "reusable", "meaning": "可重複使用的"}
+          ],
+          "sub_questions": [
+            {
+              "question_number": 6,
+              "bloom_level": "understanding",
+              "stem": "What is the main topic of the reading above?",
+              "options": {
+                "A": "How students successfully reduced the use of plastic bags.",
+                "B": "Why fast food restaurants charge extra money for cups.",
+                "C": "The history of supermarket shelf design in Taiwan.",
+                "D": "Ways to take care of rescue dogs during earthquakes."
+              },
+              "answer": "A",
+              "explanation": "短文主旨描述學生在兩週減塑專案中成功減少塑膠袋使用量，故選 (A)。"
+            },
+            {
+              "question_number": 7,
+              "bloom_level": "applying",
+              "stem": "According to the bar chart, how many plastic bags did a student use in Week 3?",
+              "options": {
+                "A": "14 bags.",
+                "B": "5 bags.",
+                "C": "2 bags.",
+                "D": "0 bags."
+              },
+              "answer": "C",
+              "explanation": "依據統計長條圖，第三週每人平均塑膠袋使用量為 2 個，故選 (C)。"
+            },
+            {
+              "question_number": 8,
+              "bloom_level": "analyzing",
+              "stem": "What can we infer from the phrase 'Small everyday actions truly bring huge triumphs'?",
+              "options": {
+                "A": "Buying reusable bags is very difficult for students.",
+                "B": "Individual minor efforts can make a big positive difference to nature.",
+                "C": "Supermarkets should stop selling groceries completely.",
+                "D": "Students should not participate in environmental projects."
+              },
+              "answer": "B",
+              "explanation": "言外之意在於每個人日常生活的小小改變，累積起來能對大自然產生巨大正向改變，故選 (B)。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_id": "sec_3",
+      "section_title": "三、 依提示作答與引導式翻譯 (第 9-12 題，共 50 分)",
+      "section_type": "SENTENCE_REWRITE",
+      "score_per_question": 12.5,
+      "total_section_score": 50,
+      "questions": [
+        {
+          "question_number": 9,
+          "bloom_level": "applying",
+          "score": 12,
+          "stem": "Candy was my best friend. / I thought so. (請用『... that ...』合併兩句)",
+          "answer": "I thought that Candy was my best friend.",
+          "explanation": "名詞子句當受詞，主要子句為 I thought，受詞子句為 that Candy was my best friend。"
+        },
+        {
+          "question_number": 10,
+          "bloom_level": "applying",
+          "score": 12,
+          "stem": "Walking into the wrong classroom really upset Lisa. (請用虛主詞『It ...』改寫句子)",
+          "answer": "It really upset Lisa to walk into the wrong classroom.",
+          "explanation": "虛主詞 It 代替真主詞不定詞片語 to walk into the wrong classroom。"
+        },
+        {
+          "question_number": 11,
+          "bloom_level": "applying",
+          "score": 13,
+          "stem": "顧客在店裡停留得越久，他們花得錢就越多。(請依中文字義翻譯成英文)",
+          "answer": "The longer customers stay in the store, the more money they spend.",
+          "explanation": "運用雙重比較級句型：The + 比較級 + S + V, the + 比較級 + S + V。"
+        },
+        {
+          "question_number": 12,
+          "bloom_level": "applying",
+          "score": 13,
+          "stem": "對初學者而言，每天規律練習是很重要的。(請依中文字義翻譯成英文)",
+          "answer": "It is important for beginners to practice regularly every day.",
+          "explanation": "運用虛主詞句型：It is + adj. + for sb. + to VR。"
+        }
+      ]
+    }
+  ]
+}
