@@ -676,4 +676,27 @@ Safetensors 與 adapter 設定會保留；自動匯入支援完整單檔 GGUF。
 本機下載完成|Local download completed|ローカルダウンロード完了|Descarga local completada
 已下載／匯入本機，尚未切換模型槽；請先核對來源|Downloaded or imported locally. Verify the source before switching slots.|ローカルに保存しました。スロット切り替え前にモデル元を確認してください。|Descargado o importado localmente. Verifica el origen antes de cambiar.
 LM Studio 已下載。請列舉本機模型，將服務實際回傳的模型 ID 登錄為來源。|Downloaded in LM Studio. List local models and register the actual model ID returned by the server.|LM Studioにダウンロードしました。一覧から実際のモデルIDを登録してください。|Descargado en LM Studio. Lista los modelos locales y registra el ID real del servidor.
+01 教材輸入|01 Input materials|01 教材入力|01 Introducir materiales
+02 組成考卷|02 Compose exam|02 試験を構成|02 Crear examen
+先輸入教材，再組成考卷|Input materials before composing an exam|先に教材を入力し、その後に試験を構成|Introduce materiales antes de crear el examen
+儲存原文後，自動切段並使用本機模型建立 Dense RAG。教材、來源位置與向量保存在後端資料庫。|Saved text is automatically chunked and embedded locally for Dense RAG. Materials, source positions and vectors stay in the database.|保存した原文を自動分割し、ローカルモデルでDense RAGを構築します。教材・位置・ベクトルはデータベースに保存します。|El texto se divide y vectoriza localmente para Dense RAG. Materiales, posiciones y vectores se guardan en la base de datos.
+本機向量模型：EmbeddingGemma。首次建置需主機 Ollama 可用；出題只檢索你選取的教材。|Local embedding model: EmbeddingGemma. Ollama must be running. Generation retrieves only selected materials.|埋め込みモデル：EmbeddingGemma。Ollamaを起動してください。選択した教材だけを検索します。|Modelo local: EmbeddingGemma. Ollama debe estar activo. Solo se buscan los materiales seleccionados.
+保存教材並建立 RAG|Save materials and build RAG|教材を保存してRAGを構築|Guardar materiales y crear RAG
+教材已保存，RAG 自動建置中|Materials saved; RAG builds automatically|教材を保存しました。RAGを自動構築中|Materiales guardados; RAG se crea automáticamente
+RAG 排隊中|RAG queued|RAG待機中|RAG en cola
+RAG 建置中|Building RAG|RAG構築中|Creando RAG
+RAG 可檢索|RAG searchable|RAG検索可能|RAG disponible
+RAG 建置失敗|RAG build failed|RAG構築失敗|Error al crear RAG
+重建 RAG|Rebuild RAG|RAGを再構築|Reconstruir RAG
+試查教材原文|Preview source retrieval|教材原文を検索|Probar búsqueda en materiales
+想檢索的問題|Retrieval question|検索する質問|Pregunta de búsqueda
+例如：MLM 的標籤為何要保留原始 token？|Example: Why must MLM labels retain original tokens?|例：MLMのラベルに元のトークンが必要なのはなぜ？|Ejemplo: ¿Por qué las etiquetas MLM conservan los tokens originales?
+檢索勾選教材|Search checked materials|選択した教材を検索|Buscar materiales marcados
+分數是向量相似度，不是答案可信度。請核對原文與來源位置。|Scores measure vector similarity, not answer confidence. Verify the source text and location.|値はベクトル類似度で、回答の信頼度ではありません。原文と位置を確認してください。|La puntuación mide similitud vectorial, no confianza. Comprueba el texto y la ubicación.
+下一步：組成考卷 →|Next: compose exam →|次へ：試験を構成 →|Siguiente: crear examen →
+教材向量重建已排隊|Material reindex queued|教材の再構築を予約しました|Reconstrucción de materiales en cola
+尚無此科目的教材，請先在「教材輸入」載入。|No materials for this subject. Add them under Input materials first.|この科目の教材がありません。先に教材入力で追加してください。|No hay materiales para esta materia. Añádelos primero.
+相似度|Similarity|類似度|Similitud
+本次 RAG 檢索原文|Retrieved sources for this job|この処理で検索した原文|Fuentes recuperadas para este trabajo
+這些是出題時實際提供給模型的教材段落，保留於工作快照。|These material excerpts were supplied to the model and retained in the job snapshot.|これらは出題時にモデルへ渡した原文で、処理のスナップショットに保存されています。|Estos fragmentos se entregaron al modelo y se conservaron en el trabajo.
 `.trim().split('\n').map(line=>line.split('|'));

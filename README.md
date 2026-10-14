@@ -9,6 +9,8 @@
 
 模型磁碟庫可從 Ollama Library 或 Hugging Face 公開 GGUF 查詢／下載到主機，接入本機 Ollama／LM Studio。可分塊上傳自己的權重並驗證；包含 OmniEdu Gemma 4 E4B-it LoRA 的原生 localhost 接入腳本。預設教材出題為 Gemma 4 12B，推理批改為 GPT OSS20B；OmniEdu 是可核對與切換的獨立來源。沒有雲端推論、付費 API或訂閱動作。
 
+教材工作室依序為「教材輸入 → 組成考卷 → 審題匯出」。新增本機EmbeddingGemma Dense RAG，原文儲存後自動切段、建立SQLite向量索引；出題依選取教材做cosine檢索，保留PDF頁碼與原文快照。
+
 部署及實測：[本機模型與OmniEdu指南](llm-assessment/planning/本機模型下載與OmniEdu接入.md)。底模、adapter、教材PDF、資料庫、帳號、作答與金鑰不入Git；使用者需在本機準備模型與教材。原版Windows98音效二進位檔亦不隨程式碼再散布，來源及雜湊保留供核對。
 
 ---

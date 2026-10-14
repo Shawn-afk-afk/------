@@ -4,13 +4,17 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
 import test_workflow as workflow
 from test_workflow import Client
-import storage,exam_studio,model_slots
+import storage,exam_studio,model_slots,dense_rag
 
 class StudioWorkflow(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):workflow.Workflow.setUpClass.__func__(cls)
+    def setUpClass(cls):
+        workflow.Workflow.setUpClass.__func__(cls)
+        cls.emb=patch.object(dense_rag,'embed',side_effect=lambda texts,query=False:[[1.0,0.0] for text in texts]);cls.emb.start()
+        cls.ident=patch.object(dense_rag,'identity',return_value='qa-embedding-v1');cls.ident.start()
     @classmethod
-    def tearDownClass(cls):workflow.Workflow.tearDownClass.__func__(cls)
+    def tearDownClass(cls):
+        cls.emb.stop();cls.ident.stop();workflow.Workflow.tearDownClass.__func__(cls)
     def test_authenticated_generate_edit_export_and_bank_drafts(self):
         admin=Client(self.base);student=Client(self.base)
         admin.call('/api/setup',{'email':'qa-admin','password':'QA-only-password123!','name':'測試管理者'});admin.login('qa-admin')

@@ -18,6 +18,8 @@ const i18n=(()=>{
   const trimmed=source.trim(),exact=catalog.get(trimmed);
   if(exact)return source.replace(trimmed,exact[locale]);
   const patterns=[
+   [/^(\d+) \/ (\d+) 段$/,['$1 / $2 chunks','$1 / $2段','$1 / $2 fragmentos']],
+   [/^相似度 ([\d.-]+)$/,['Similarity $1','類似度 $1','Similitud $1']],
    [/^期限：(.+)$/, ['Due: $1','期限：$1','Fecha límite: $1']],
    [/^顯示 (\d+) 題$/,['Showing $1 questions','$1問を表示','$1 preguntas']],
    [/^(\d+) 題可選$/,['$1 questions available','$1問を選択可能','$1 preguntas disponibles']],

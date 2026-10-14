@@ -120,3 +120,9 @@ select { height:auto; min-height:34px; padding:4px 26px 4px 8px; line-height:1.3
 .model-job .badge { float:right; }
 .model-library .list-row small { display:block; }
 @media(max-width:850px) { .model-library-grid { grid-template-columns:1fr; gap:12px; } }
+
+.rag-search-panel { margin:24px 0; padding:18px; border:2px groove #ddd; background:#ece9df; }
+.rag-hit { padding:14px; margin:14px 0; border:2px inset #ddd; background:#ffffed; }
+.rag-hit>div { display:flex; justify-content:space-between; gap:12px; overflow-wrap:anywhere; }
+.rag-hit pre { white-space:pre-wrap; max-height:260px; overflow:auto; }
+[data-rag-status] small { margin:6px 0; }

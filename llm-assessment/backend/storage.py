@@ -63,6 +63,8 @@ def initialize():
         from exam_studio import initialize as initialize_exams
         initialize_slots(c)
         initialize_exams(c)
+        from dense_rag import initialize as initialize_rag
+        initialize_rag(c)
         from model_library import initialize as initialize_model_library
         initialize_model_library(c)
 

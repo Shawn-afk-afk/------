@@ -89,3 +89,7 @@ python tests/smoke_ai.py
 模型轉接槽支援 Ollama、LM Studio、本機相容 API及原生OmniEdu LoRA。可查詢Hugging Face公開GGUF、下載到主機、分塊上傳權重並核對後切換；沒有雲端推論或付費服務。[操作、安裝與實測限制](planning/本機模型下載與OmniEdu接入.md)。
 
 從GitHub新安裝前，請取得ZJU教材來源（`git clone https://github.com/ZJU-LLMs/Foundations-of-LLMs.git`，放在本整合目錄旁，或設定`ASSESSMENT_SOURCE_DIR`指向該目錄），安裝`requirements-exam.txt`後執行`backend/build_draft_bank.py`。教材、帳號、答案、模型權重、虛擬環境及本機音效原檔不隨程式碼提交；原版Windows98音效來源與雜湊保留於`static/vendor/win98-sounds/PROVENANCE.md`與`manifest.json`，需自行依原授權準備。
+
+## 教材優先與自動 Dense RAG
+
+工作室依序為教材輸入、組成考卷、審題匯出。儲存教材會自動建立本機EmbeddingGemma向量索引；可預覽原文、頁碼與向量相似度，出題檢索原文保留於工作快照。[操作與實作說明](planning/教材工作室DenseRAG.md)。先下載`ollama pull embeddinggemma`，再啟動網站；沒有向量資料庫額外port或雲端推論。

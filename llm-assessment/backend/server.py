@@ -23,6 +23,7 @@ import collab
 import model_slots
 import model_library
 import exam_studio
+import dense_rag
 from storage import db,initialize,uid,encode,decode,question,latest_questions,hash_input,audit,DB_PATH
 
 STATIC=Path(__file__).resolve().parents[1]/'static'
@@ -203,7 +204,7 @@ class Handler(BaseHTTPRequestHandler):
             if not path.startswith('/api/'):
                 require(not write,'不支援的方法',405)
                 name=urllib.parse.unquote(path.lstrip('/')) or 'index.html'
-                require(name in {'index.html','app.js','guide.js','canvas.js','studio.js','models.js','i18n.js','translations.js','sounds.js','app.css','retro.css','sandbox.html','sandbox.js','worker.mjs','favicon.svg'} or name.startswith(('vendor/pyodide/','vendor/98/','vendor/win98-sounds/')),'找不到頁面',404)
+                require(name in {'index.html','app.js','guide.js','canvas.js','studio.js','rag.js','models.js','i18n.js','translations.js','sounds.js','app.css','retro.css','sandbox.html','sandbox.js','worker.mjs','favicon.svg'} or name.startswith(('vendor/pyodide/','vendor/98/','vendor/win98-sounds/')),'找不到頁面',404)
                 target=(STATIC/name).resolve()
                 require(target.is_relative_to(STATIC.resolve()) and target.is_file(),'找不到檔案',404)
                 ctype=mimetypes.guess_type(name)[0] or 'application/octet-stream'
@@ -340,7 +341,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(404,'找不到 API')
         except ApiError as exc:self.send({'error':exc.message},exc.status)
         except collab.CollabError as exc:self.send({'error':exc.message},exc.status)
-        except (model_slots.SlotError,exam_studio.ExamError) as exc:self.send({'error':str(exc)},400)
+        except (model_slots.SlotError,exam_studio.ExamError,dense_rag.RagError) as exc:self.send({'error':str(exc)},400)
         except sqlite3.IntegrityError:self.send({'error':'資料已存在或關聯不合法'},409)
         except (KeyError,TypeError,ValueError):self.send({'error':'欄位不完整或格式錯誤'},400)
         except (BrokenPipeError,ConnectionResetError):pass
@@ -564,11 +565,12 @@ def main():
         if not args.no_grading:threading.Thread(target=analysis.worker,daemon=True).start()
         threading.Thread(target=collab.worker,daemon=True).start()
         threading.Thread(target=exam_studio.worker,daemon=True).start()
+        threading.Thread(target=dense_rag.worker,daemon=True).start()
         threading.Thread(target=model_library.worker,daemon=True).start()
     http=ThreadingHTTPServer((args.host,args.port),Handler)
     print(f'Local: http://{args.host}:{args.port}',flush=True)
     try:http.serve_forever()
     except KeyboardInterrupt:pass
-    finally:model_library.STOP.set();analysis.STOP.set();collab.STOP.set();exam_studio.STOP.set();http.server_close()
+    finally:dense_rag.STOP.set();model_library.STOP.set();analysis.STOP.set();collab.STOP.set();exam_studio.STOP.set();http.server_close()
 
 if __name__=='__main__':main()
