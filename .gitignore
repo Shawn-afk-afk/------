@@ -33,3 +33,12 @@ B04_教師用書pdf檔/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Integrated local assessment runtime and proprietary model assets
+llm-assessment/.runtime/
+llm-assessment/backups/
+*.sqlite3*
+*.safetensors
+*.gguf
+OmniEdu-final-*/
+Foundations-of-LLMs/

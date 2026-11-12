@@ -1,0 +1,17 @@
+.runtime/
+backups/
+backend/*.sqlite3*
+backend/__pycache__/
+tests/__pycache__/
+
+# Local weights, credentials, and vendor-owned system sound binaries
+.env
+.env.*
+*.gguf
+*.safetensors
+*.bin
+*.wav
+*.WAV
+*.log
+OmniEdu-final-*/
+Foundations-of-LLMs/

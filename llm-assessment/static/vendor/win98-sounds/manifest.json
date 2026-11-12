@@ -1,0 +1,79 @@
+[
+  {
+    "file": "chord.wav",
+    "bytes": 97016,
+    "sha256": "ee94302491c85b010d55c48058142420ec356467b88ec43131fc0d0b0600c259",
+    "format_tag": 1,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 16,
+    "source": "https://lelegofrog.github.io/lelegodlex/win/98/chord.wav",
+    "duration": 1.099
+  },
+  {
+    "file": "ding.wav",
+    "bytes": 80856,
+    "sha256": "47a423798ff67d9c00f1607f470573d80653b7581475fa850a557c46b06a104a",
+    "format_tag": 1,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 16,
+    "source": "https://lelegofrog.github.io/lelegodlex/win/98/ding.wav",
+    "duration": 0.916
+  },
+  {
+    "file": "notify.wav",
+    "bytes": 119384,
+    "sha256": "160e0fa1d103850311bd16f74dd448b2b93ff690e10bc8ddc866d03e1aa8825b",
+    "format_tag": 1,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 16,
+    "source": "https://lelegofrog.github.io/lelegodlex/win/98/notify.wav",
+    "duration": 1.353
+  },
+  {
+    "file": "start-pcm.wav",
+    "bytes": 4168,
+    "sha256": "9083cba2c58022ffa0de18369487ce03f91bd319fadc876ab9190446a21b4406",
+    "format_tag": 1,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 16,
+    "source": "start.wav",
+    "duration": 0.046,
+    "conversion": "FFmpeg 8.1.1 ADPCM decode to signed 16-bit PCM; original sample rate and channels retained"
+  },
+  {
+    "file": "start.wav",
+    "bytes": 1192,
+    "sha256": "eff8f5a74d7499b0991ff42e7963927ad37a17d63ef13ee784b849cae2808ada",
+    "format_tag": 2,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 4,
+    "source": "https://lelegofrog.github.io/lelegodlex/win/98/start.wav"
+  },
+  {
+    "file": "tada.wav",
+    "bytes": 171100,
+    "sha256": "18bc62150edbb6bc61908d59222f44729fa60292f4ace7c615a6667ce6bdf676",
+    "format_tag": 1,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 16,
+    "source": "https://lelegofrog.github.io/lelegodlex/win/98/tada.wav",
+    "duration": 1.939
+  },
+  {
+    "file": "The Microsoft Sound.wav",
+    "bytes": 693212,
+    "sha256": "fc18b965c256f40645d903c1d66dd0e39eb9d1be4136c56bec0b0672f8ce55fb",
+    "format_tag": 1,
+    "channels": 2,
+    "sample_rate": 22050,
+    "bits": 16,
+    "source": "https://lelegofrog.github.io/lelegodlex/win/98/The%20Microsoft%20Sound.wav",
+    "duration": 7.859
+  }
+]
