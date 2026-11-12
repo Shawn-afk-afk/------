@@ -22,6 +22,96 @@ from rag_service import rag_service
 from word_guard import word_guard
 from chart_registry import generate_english_exam_chart, ChartRegistry
 
+# ==============================================================================
+# 108課綱英語文難度分級參數矩陣 (J1-J3 國中 / S1-S3 高中)
+# ==============================================================================
+GRADE_DIFFICULTY_MATRIX = {
+    "J1": {
+        "grade_code": "J1",
+        "name": "國中七年級 (Grade 7)",
+        "phase": "第四階段（國中七年級）",
+        "vocab_scope": "教育部國中基本 1,200 字前半段（常用 500-600 生活初階詞彙）。題幹與選項 100% 必須在此範圍內。",
+        "grammar_whitelist": "Be動詞、一般動詞現在簡單式、現在進行式、there is/are、祈使句、名詞複數、代名詞、時間/地點介系詞、頻率副詞（always, usually, often, sometimes, never）。",
+        "grammar_forbidden": "嚴格禁止出現過去式、未來式、完成式、被動語態、關係子句、名詞子句、比較級與最高級！",
+        "avg_sentence_len": 10,
+        "max_sentence_len": 14,
+        "passage_word_count": "80-140 words",
+        "cognitive_focus": "辨識與字面理解、事實細節檢索、日常情境問答 (課綱 3-Ⅳ-5~9)",
+        "genres": ["校園佈告欄", "即時通訊聊天截圖", "社團招募傳單", "失物招領", "簡易日常便條與留言"],
+        "curriculum_codes": ["3-Ⅳ-5", "3-Ⅳ-6", "3-Ⅳ-8", "9-Ⅳ-1"]
+    },
+    "J2": {
+        "grade_code": "J2",
+        "name": "國中八年級 (Grade 8)",
+        "phase": "第四階段（國中八年級）",
+        "vocab_scope": "教育部國中基本 1,200 字中段（累積約 1,000 核心詞彙）。題幹與選項 100% 必須在此範圍內。",
+        "grammar_whitelist": "加入過去簡單式（規則/不規則）、過去進行式、未來式（will/be going to）、形容詞/副詞比較級與最高級、不定詞、動名詞、should/have to、連接詞（because, so, although, when, before, after）、感官動詞。",
+        "grammar_forbidden": "嚴格禁止出現現在完成式、被動語態、關係代名詞子句、假設語氣！",
+        "avg_sentence_len": 14,
+        "max_sentence_len": 18,
+        "passage_word_count": "110-180 words",
+        "cognitive_focus": "大意理解、文境合理猜測、跨條件邏輯排除 (課綱 9-Ⅳ-1, 3-Ⅳ-12)",
+        "genres": ["生活信件與回覆", "活動流程說明", "簡單短文與故事", "餐廳折價券與菜單", "旅遊日記"],
+        "curriculum_codes": ["3-Ⅳ-12", "9-Ⅳ-1", "9-Ⅳ-2"]
+    },
+    "J3": {
+        "grade_code": "J3",
+        "name": "國中九年級 (Grade 9)",
+        "phase": "第四階段（國中九年級）",
+        "vocab_scope": "教育部基本 1,200 字全滿，可微量使用參考表 800 字（超出字彙必須在 footnotes 附上繁體中文註解）。",
+        "grammar_whitelist": "加入現在完成式、被動語態、分詞當形容詞、that/wh-名詞子句、關係子句（限定用法）、so...that、使役動詞、附加問句。",
+        "grammar_forbidden": "禁止出現高中倒裝句、虛擬語氣、分詞構句！",
+        "avg_sentence_len": 18,
+        "max_sentence_len": 24,
+        "passage_word_count": "140-230 words",
+        "cognitive_focus": "因果關係分析、作者觀點推論、事實與意見辨析、跨模態圖表整合 (課綱 9-Ⅳ-2~4, 3-Ⅳ-15)",
+        "genres": ["Podcast 訪談紀錄", "跨模態長條圖/統計表", "新聞時事短評", "商品退換貨客訴與回覆", "環保與科學探究報告"],
+        "curriculum_codes": ["9-Ⅳ-2", "9-Ⅳ-3", "9-Ⅳ-4", "3-Ⅳ-15"]
+    },
+    "S1": {
+        "grade_code": "S1",
+        "name": "高中十年級 (Grade 10)",
+        "phase": "第五階段（高中十年級）",
+        "vocab_scope": "大考中心高中英文參考詞彙表 Level 1–3（約 4,500 常用字前段）。超出詞彙需附註解。",
+        "grammar_whitelist": "五大句型、時態整合（完成進行式）、名詞子句進階（whether/if）、授與動詞、使役動詞、表示目的/原因/結果之句型、複合形容詞。",
+        "grammar_forbidden": "禁止高三深層倒裝與假設語氣！",
+        "avg_sentence_len": 20,
+        "max_sentence_len": 28,
+        "passage_word_count": "180-280 words",
+        "cognitive_focus": "篇章結構分析、依上下文與句型推測字義、比較歸類排序 (課綱 3-Ⅴ-7, 9-Ⅴ-1)",
+        "genres": ["科普短文", "生活文化專欄", "校園演講稿", "雙人辯論摘要", "圖表與趨勢報告"],
+        "curriculum_codes": ["3-Ⅴ-7", "3-Ⅴ-12", "9-Ⅴ-1", "9-Ⅴ-2"]
+    },
+    "S2": {
+        "grade_code": "S2",
+        "name": "高中十一年級 (Grade 11)",
+        "phase": "第五階段（高中十一年級）",
+        "vocab_scope": "大考中心高中英文參考詞彙表 Level 1–4（約 4,500 常用字完整範圍）。",
+        "grammar_whitelist": "形容詞子句進階（非限定用法、關係副詞）、副詞子句與連接詞（條件、讓步）、分詞與分詞構句、進階不定詞/動名詞、代名詞指涉。",
+        "grammar_forbidden": "避免過度複雜的罕見倒裝！",
+        "avg_sentence_len": 22,
+        "max_sentence_len": 32,
+        "passage_word_count": "220-340 words",
+        "cognitive_focus": "事實與意見評析、歸納共通點與結論、段落摘要 (課綱 9-Ⅴ-3, 9-Ⅴ-4, 5-Ⅴ-12)",
+        "genres": ["深度專題報導", "社論與讀者投書", "學術雜誌選讀", "廣告策劃案", "多來源資訊對照"],
+        "curriculum_codes": ["9-Ⅴ-3", "9-Ⅴ-4", "5-Ⅴ-12"]
+    },
+    "S3": {
+        "grade_code": "S3",
+        "name": "高中十二年級 (Grade 12)",
+        "phase": "第五階段（高中十二年級）",
+        "vocab_scope": "大考中心高中英文參考詞彙表 Level 1–5 為主，少量 Level 6（高階生字需附註解）。",
+        "grammar_whitelist": "假設語氣（與現在/過去事實相反、wish、as if）、倒裝句（否定副詞、Only、地方副詞、假設法倒裝）、主謂一致進階、綜合句構靈活運用。",
+        "grammar_forbidden": "無特定語法限制，但考點需符合大考學測/分科測驗導向。",
+        "avg_sentence_len": 25,
+        "max_sentence_len": 38,
+        "passage_word_count": "260-400 words",
+        "cognitive_focus": "批判性思考、跨篇章比較推論、評估資訊並提出判斷 (課綱 9-Ⅴ-5~7)",
+        "genres": ["跨領域多文本閱讀", "學術研究摘要", "全球時事深入論述", "政策評析與倡議書"],
+        "curriculum_codes": ["9-Ⅴ-5", "9-Ⅴ-6", "9-Ⅴ-7"]
+    }
+}
+
 
 class AgentService:
     def __init__(self, ollama_url="http://localhost:11434", default_local_model="gemma4:e4b"):
@@ -158,24 +248,43 @@ class AgentService:
         # 切換雲端備援
         return self.call_gemini(prompt, system_prompt, api_key=custom_api_key)
 
+    def resolve_grade_level(self, grade_input):
+        """解析年級標籤至標準代碼 (J1-J3, S1-S3)"""
+        if not grade_input:
+            return "J1"
+        s = str(grade_input).strip().upper()
+        if s in GRADE_DIFFICULTY_MATRIX:
+            return s
+        if "7" in s or "七" in s or "J1" in s:
+            return "J1"
+        if "8" in s or "八" in s or "J2" in s:
+            return "J2"
+        if "9" in s or "九" in s or "J3" in s:
+            return "J3"
+        if "10" in s or "高一" in s or "S1" in s:
+            return "S1"
+        if "11" in s or "高二" in s or "S2" in s:
+            return "S2"
+        if "12" in s or "高三" in s or "S3" in s:
+            return "S3"
+        return "J1"
+
     # ==============================================================================
     # 核心命題方法：按大題與子批次分塊生成 (Sub-batch Chunked Generation)
     # ==============================================================================
-    def generate_section(self, subject, unit_ids, section_config, start_q_num=1, custom_api_key=None, progress_callback=None):
+    def generate_section(self, subject, unit_ids, section_config, start_q_num=1, custom_api_key=None, progress_callback=None, grade_level=None):
         """
-        生成單一大題的題目資料 (Micro-Prompting + Sub-batch Chunking 策略)
-        雙向相容前後端鍵名：
-        section_type / type
-        question_count / count
-        score_per_question / score
-        passages_count / passages
-        questions_per_passage / q_per_p
+        生成單一大題的題目資料 (整合 108 課綱難度分級標準與四大命題原則)
         """
         sec_type = section_config.get("section_type") or section_config.get("type", "CHOICE")
         count = int(section_config.get("question_count") or section_config.get("count", 5))
         score_each = float(section_config.get("score_per_question") or section_config.get("score", 2))
         sec_title = section_config.get("section_title") or section_config.get("title") or section_config.get("section_name", "測驗大題")
         sec_id = section_config.get("section_id") or section_config.get("id", f"sec_{start_q_num}")
+
+        # 解析並錨定年級難度參數
+        grade_key = self.resolve_grade_level(grade_level or section_config.get("grade_level") or section_config.get("grade") or "J1")
+        grade_prof = GRADE_DIFFICULTY_MATRIX.get(grade_key, GRADE_DIFFICULTY_MATRIX["J1"])
 
         # 1. 從 RAG 檢索單元精華知識點 (上下文控制在 600-800 tokens 內)
         rag_ctx = rag_service.retrieve_context_for_prompt(subject, unit_ids, question_type=sec_type)
@@ -185,17 +294,22 @@ class AgentService:
             if uid in rag_service.index:
                 word_guard.add_custom_vocab(rag_service.index[uid].get("vocabulary", []))
 
-        system_prompt = (
-            "You are a professional junior high school teacher creating a formal secondary school exam for Grade 7-9 (108 Curriculum). "
-            "Output VALID JSON ONLY according to the requested schema. "
-            "Rule 1 (70/30 Principle): The tested words and grammar MUST strictly come from the provided textbook context, "
-            "but all question sentences, stories, and contexts MUST be 100% BRAND NEW and original. Do NOT copy textbook exercises! "
-            "Rule 2 (Grade Level & Difficulty): Question contexts MUST fit junior high school daily life (school, family, friends, hobbies). "
-            "STRICTLY FORBIDDEN to use college/academic research contexts (e.g. hypothesis, experimental results, researcher). "
-            "Rule 3 (STRICT VOCABULARY GUARD): Absolutely NO fake words, NO abbreviations, NO gibberish like 'dhu', 'ecu', 'aqz'. "
-            "Every option (A, B, C, D) MUST be a genuine, valid English word found in a standard junior high school dictionary. "
-            "Rule 4: Ensure each multiple-choice question has exactly 4 options (A, B, C, D) and only ONE indisputable correct answer."
-        )
+        if subject == "English":
+            system_prompt = (
+                f"You are a master EFL item-writing professor for Taiwan's 108 Curriculum ({grade_prof['phase']}).\n"
+                f"STRICT GRADE LEVEL SPECIFICATIONS ({grade_prof['name']}):\n"
+                f"1. VOCABULARY HARD CONSTRAINT: {grade_prof['vocab_scope']}\n"
+                f"2. GRAMMAR WHITELIST: {grade_prof['grammar_whitelist']}\n"
+                f"3. STRICTLY FORBIDDEN: {grade_prof['grammar_forbidden']}\n"
+                f"4. COGNITIVE LEVEL & CURRICULUM CODES: Focus on {grade_prof['cognitive_focus']}\n"
+                f"5. DISTRACTOR ENGINEERING: Every distractor (wrong option) must be a plausible real word or phrase based on cognitive traps (Word Spotting Trap, Partial Truth, Over-generalization, Opposite Trap). NO silly or fake words.\n"
+                f"6. Output 100% VALID JSON strictly matching the requested schema. Stems and options in English, explanations and distractor_analysis in Traditional Chinese (繁體中文)."
+            )
+        else:
+            system_prompt = (
+                f"你是一位精通台灣 108 課綱{subject}科之專業評量教師。"
+                "請嚴格根據所提供的教材內容與知識點出題，題幹清楚、選項具備高度誘答力與鑑別度，輸出嚴格合規之 JSON 格式。"
+            )
 
         # A. 選擇題或非選擇題 (採用子批次分塊，每批最多 5 題，確保 4B 模型輸出 100% 完整無截斷)
         if sec_type in ["CHOICE", "FILL_BLANK", "SENTENCE_REWRITE", "TRANSLATION"]:
@@ -220,22 +334,29 @@ class AgentService:
 {rag_ctx}
 
 Task: Generate exactly {b_cnt} {sec_type} questions numbered from {b_start} to {b_end}.
-Grade Level: Junior High School (Grade 7-9, 108 Curriculum).
-STRICT VOCABULARY GUARD:
-- All options (A, B, C, D) must be 100% genuine, real English words.
-- NO non-existent words or abbreviations (NO 'dhu', 'ecu', 'aqz', 'arb').
-- Contexts must be daily life (school, home, shopping, travel).
-Language: English stems/options with Traditional Chinese explanations.
+Target Grade: {grade_prof['name']} (Taiwan 108 Curriculum).
+STRICT VOCABULARY & GRAMMAR RULES:
+- Vocabulary Scope: {grade_prof['vocab_scope']}
+- Allowed Grammar: {grade_prof['grammar_whitelist']}
+- PROHIBITED: {grade_prof['grammar_forbidden']}
+- High Cognitive, Low Linguistic Burden: Test logic, comprehension, and context rather than obscure words.
+- Distractors: Every wrong option must be a plausible real word/phrase from the grade's scope.
 Output JSON schema:
 {{
   "questions": [
     {{
       "question_number": {b_start},
-      "bloom_level": "remembering",
+      "curriculum_code": "{grade_prof['curriculum_codes'][0]}",
+      "bloom_level": "understanding",
       "stem": "question sentence with _____ blank",
       "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
       "answer": "A",
-      "explanation": "中文繁體解析說明..."
+      "distractor_analysis": {{
+        "B": "干擾陷阱分析（如字面相似、主客混淆等）",
+        "C": "干擾陷阱分析",
+        "D": "干擾陷阱分析"
+      }},
+      "explanation": "中文繁體核心考點與完整詳解..."
     }}
   ]
 }}
@@ -255,6 +376,8 @@ Generate the JSON array now:
                     q["question_number"] = b_start + idx
                     if "score" not in q:
                         q["score"] = score_each
+                    if "curriculum_code" not in q:
+                        q["curriculum_code"] = grade_prof["curriculum_codes"][0]
                     # 執行假單字門禁檢驗與自動重試
                     q = self.validate_and_sanitize_question(q, rag_ctx, system_prompt, custom_api_key=custom_api_key)
                     all_questions.append(q)
@@ -264,11 +387,17 @@ Generate the JSON array now:
                     missing_num = start_q_num + len(all_questions)
                     all_questions.append({
                         "question_number": missing_num,
+                        "curriculum_code": grade_prof["curriculum_codes"][0],
                         "bloom_level": "applying",
                         "stem": f"Which of the following best completes the sentence according to the context?",
                         "options": {"A": "First option", "B": "Second option", "C": "Third option", "D": "Fourth option"},
                         "answer": "A",
                         "score": score_each,
+                        "distractor_analysis": {
+                            "B": "局部事實干擾",
+                            "C": "反向邏輯干擾",
+                            "D": "語法不一致干擾"
+                        },
                         "explanation": "依據單元語意與文法規則選出最適當答案。"
                     })
 
@@ -288,11 +417,14 @@ Generate the JSON array now:
 
             all_passages = []
             curr_q = start_q_num
+            import random
 
             for p_idx in range(1, passages_count + 1):
                 p_start = curr_q
                 p_end = p_start + q_per_passage - 1
                 curr_q = p_end + 1
+
+                genre_choice = random.choice(grade_prof["genres"])
 
                 if progress_callback:
                     progress_callback(f"正在生成【{sec_title}】第 {p_idx}/{passages_count} 篇閱讀題組 (第 {p_start}-{p_end} 題)...")
@@ -302,25 +434,39 @@ Generate the JSON array now:
 
 Task: Generate exactly 1 original reading passage with {q_per_passage} questions.
 Question range: {p_start} to {p_end}.
-Rule: The article must be an original reading (dialogue, notice, email, interview, or short article related to the unit topic, approx 80-160 words).
+Target Grade: {grade_prof['name']} (Taiwan 108 Curriculum).
+Passage Specification:
+- Genre (Real-world): {genre_choice} (e.g. social chat, notice board, flight schedule, interview, or review).
+- Word Count: Approx {grade_prof['passage_word_count']}.
+- Average sentence length: approx {grade_prof['avg_sentence_len']} words.
+- Vocabulary & Grammar: Strictly adhere to {grade_prof['name']}. Allowed: {grade_prof['grammar_whitelist']}. Prohibited: {grade_prof['grammar_forbidden']}.
+- Soft Constraints: If you introduce 1-3 necessary real-world contextual words (e.g. robotics, reservation), you MUST add them into "footnotes" with Traditional Chinese translations.
+- High Cognitive, Low Linguistic: Questions must test multi-condition elimination, tone, implication, or main idea.
 Output JSON schema:
 {{
   "passages": [
     {{
       "passage_id": "P{p_idx:02d}",
       "range_str": "{p_start}-{p_end}",
-      "title": "Article Title",
+      "title": "Passage Title",
+      "genre": "{genre_choice}",
       "content": "Full original article text...",
       "footnotes": [{{"word": "vocabulary", "meaning": "繁體中文釋義"}}],
       "sub_questions": [
         {{
           "question_number": {p_start},
-          "bloom_level": "understanding",
-          "stem": "What is the reading mainly about?",
+          "curriculum_code": "{grade_prof['curriculum_codes'][-1]}",
+          "bloom_level": "analyzing",
+          "stem": "Question stem in English (must NOT contain any out-of-grade words)",
           "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
           "answer": "A",
           "score": {score_each},
-          "explanation": "繁體中文解析說明..."
+          "distractor_analysis": {{
+            "B": "條件排除或局部事實陷阱分析",
+            "C": "過度推論陷阱分析",
+            "D": "字面相似陷阱分析"
+          }},
+          "explanation": "中文繁體詳細推導解析..."
         }}
       ]
     }}
@@ -339,6 +485,7 @@ Generate the JSON now:
                             "passage_id": f"P{p_idx:02d}",
                             "range_str": f"{p_start}-{p_end}",
                             "title": f"Reading Passage {p_idx}",
+                            "genre": genre_choice,
                             "content": "Learning a new language is always an exciting journey. It opens up doors to new cultures and ideas.",
                             "footnotes": [],
                             "sub_questions": []
@@ -349,27 +496,40 @@ Generate the JSON now:
                         "passage_id": f"P{p_idx:02d}",
                         "range_str": f"{p_start}-{p_end}",
                         "title": f"Reading Passage {p_idx}",
+                        "genre": genre_choice,
                         "content": "Education helps students understand the world around them.",
                         "footnotes": [],
                         "sub_questions": []
                     }
+
+                # 確保 footnotes 相容性 (支援 glossary 欄位)
+                if not passage_obj.get("footnotes") and passage_obj.get("glossary"):
+                    passage_obj["footnotes"] = passage_obj["glossary"]
 
                 # 確保子題目齊全並校正題號
                 existing_sqs = passage_obj.get("sub_questions", [])
                 for idx, sq in enumerate(existing_sqs):
                     sq["question_number"] = p_start + idx
                     sq["score"] = score_each
+                    if "curriculum_code" not in sq:
+                        sq["curriculum_code"] = grade_prof["curriculum_codes"][-1]
 
                 # 補齊不足的子題目
                 while len(existing_sqs) < q_per_passage:
                     sq_num = p_start + len(existing_sqs)
                     existing_sqs.append({
                         "question_number": sq_num,
+                        "curriculum_code": grade_prof["curriculum_codes"][-1],
                         "bloom_level": "understanding",
                         "stem": f"According to the passage, what can we infer from the text?",
                         "options": {"A": "Option A is correct", "B": "Option B is incorrect", "C": "Option C is unclear", "D": "Option D is false"},
                         "answer": "A",
                         "score": score_each,
+                        "distractor_analysis": {
+                            "B": "局部細節干擾",
+                            "C": "過度推論干擾",
+                            "D": "事實相反干擾"
+                        },
                         "explanation": "根據文章文意推論出最適解答。"
                     })
                 passage_obj["sub_questions"] = existing_sqs
@@ -457,39 +617,57 @@ Output JSON schema:
     # ==============================================================================
     # 單題一鍵抽換 (Regenerate Single Question)
     # ==============================================================================
-    def regenerate_single_question(self, subject, unit_ids, old_q, custom_api_key=None):
-        """針對老師不滿意的特定題目，使用相同單元考點生成全新原創題目 (含假字門禁)"""
+    def regenerate_single_question(self, subject, unit_ids, old_q, custom_api_key=None, grade_level="J1"):
+        """針對老師不滿意的特定題目，使用相同單元考點生成全新原創題目 (含難度分級門禁)"""
         q_num = old_q.get("question_number", 1)
         bloom = old_q.get("bloom_level", "applying")
         rag_ctx = rag_service.retrieve_context_for_prompt(subject, unit_ids, question_type="CHOICE")
 
-        system_prompt = (
-            "You are a professional junior high school English teacher creating a formal exam question. "
-            "Output VALID JSON ONLY. Strictly use real English vocabulary. Absolutely NO fake words or abbreviations like 'dhu', 'ecu'."
-        )
+        grade_key = self.resolve_grade_level(grade_level)
+        grade_prof = GRADE_DIFFICULTY_MATRIX.get(grade_key, GRADE_DIFFICULTY_MATRIX["J1"])
+
+        if subject == "English":
+            system_prompt = (
+                f"You are a professional EFL item-writing teacher for Taiwan 108 Curriculum ({grade_prof['name']}). "
+                f"STRICT VOCABULARY & GRAMMAR: {grade_prof['vocab_scope']} Allowed: {grade_prof['grammar_whitelist']} "
+                f"PROHIBITED: {grade_prof['grammar_forbidden']} Output VALID JSON ONLY."
+            )
+        else:
+            system_prompt = f"你是一位精通台灣 108 課綱{subject}科之專業評量教師。請輸出合法 JSON。"
 
         prompt = f"""
 {rag_ctx}
 
 Task: Generate 1 SINGLE BRAND NEW replacement multiple-choice question.
 Question Number: {q_num}
+Target Grade: {grade_prof['name']}
 Target Bloom Level: {bloom}
-STRICT RULE: All options (A, B, C, D) must be genuine real words from standard junior high vocabulary. NO fake words.
+Vocabulary Scope: {grade_prof['vocab_scope']}
+Grammar Whitelist: {grade_prof['grammar_whitelist']}
+Prohibited: {grade_prof['grammar_forbidden']}
 Constraint: Must be completely different from this old question: "{old_q.get('stem', '')}".
 Output JSON:
 {{
   "question_number": {q_num},
+  "curriculum_code": "{old_q.get('curriculum_code', grade_prof['curriculum_codes'][0])}",
   "bloom_level": "{bloom}",
   "stem": "New question sentence with _____ blank",
   "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
   "answer": "A",
-  "explanation": "中文繁體解析說明..."
+  "distractor_analysis": {{
+    "B": "干擾陷阱分析",
+    "C": "干擾陷阱分析",
+    "D": "干擾陷阱分析"
+  }},
+  "explanation": "中文繁體核心考點與完整詳解..."
 }}
 """
         raw = self.dispatch_llm(prompt, system_prompt=system_prompt, prefer_local=True, custom_api_key=custom_api_key)
         parsed = self.clean_and_repair_json(raw)
         parsed["question_number"] = q_num
         parsed["score"] = old_q.get("score", 2)
+        if "curriculum_code" not in parsed:
+            parsed["curriculum_code"] = old_q.get("curriculum_code", grade_prof["curriculum_codes"][0])
         # 執行門禁檢驗
         validated = self.validate_and_sanitize_question(parsed, rag_ctx, system_prompt, custom_api_key=custom_api_key)
         # 保留原本圖片屬性 (若是圖片題則保留)

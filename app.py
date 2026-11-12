@@ -213,6 +213,7 @@ class GenerateExamRequest(BaseModel):
 async def generate_exam(req: GenerateExamRequest):
     """標準 JSON 考卷生成入口 (支援任意多題與多篇題組)"""
     subject = req.metadata.get("subject", "English")
+    grade_level = req.metadata.get("grade_level") or req.metadata.get("grade") or "J1"
     unit_ids = req.unit_ids
     if not unit_ids:
         # 若未指定，預設取目前已索引的前 3 個單元
@@ -229,7 +230,8 @@ async def generate_exam(req: GenerateExamRequest):
             unit_ids=unit_ids,
             section_config=sec,
             start_q_num=current_q_num,
-            custom_api_key=req.api_key
+            custom_api_key=req.api_key,
+            grade_level=grade_level
         )
         if sec_result.get("questions"):
             current_q_num += len(sec_result["questions"])
@@ -253,6 +255,7 @@ async def generate_exam_stream(req: GenerateExamRequest):
     每完成一個題目子批次或閱讀篇章，即時推送進度百分比與步驟訊息給瀏覽器
     """
     subject = req.metadata.get("subject", "English")
+    grade_level = req.metadata.get("grade_level") or req.metadata.get("grade") or "J1"
     unit_ids = req.unit_ids
     if not unit_ids:
         all_avail = list(rag_service.index.keys())
@@ -286,7 +289,8 @@ async def generate_exam_stream(req: GenerateExamRequest):
                 section_config=sec,
                 start_q_num=current_q_num,
                 custom_api_key=req.api_key,
-                progress_callback=on_progress_step
+                progress_callback=on_progress_step,
+                grade_level=grade_level
             )
 
             if sec_result.get("questions"):
@@ -321,6 +325,7 @@ class RegenerateQuestionRequest(BaseModel):
     subject: str = "English"
     unit_ids: List[str]
     old_question: Dict[str, Any]
+    grade_level: Optional[str] = "J1"
     api_key: Optional[str] = None
 
 
@@ -330,7 +335,8 @@ async def regenerate_question(req: RegenerateQuestionRequest):
         subject=req.subject,
         unit_ids=req.unit_ids,
         old_q=req.old_question,
-        custom_api_key=req.api_key
+        custom_api_key=req.api_key,
+        grade_level=req.grade_level or "J1"
     )
     return new_q
 

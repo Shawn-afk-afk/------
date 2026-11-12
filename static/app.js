@@ -321,7 +321,7 @@ async function clearTextbooks() {
 // 3. 大題架構與常規模板模組
 // ==============================================================================
 
-// 切換科目並載入預設模板
+// 切換科目並載入預設模板 (依據大考規範設定版型)
 function loadSubjectTemplate(subject) {
   currentSubject = subject;
   const tpl = SUBJECT_TEMPLATES[subject];
@@ -329,6 +329,30 @@ function loadSubjectTemplate(subject) {
 
   document.getElementById("exam-title").value = tpl.title;
   currentSections = JSON.parse(JSON.stringify(tpl.sections));
+
+  // 排版規則設定：
+  // 英語科預設排版採用全卷純單欄或純雙欄可選擇；國文/地理/歷史/公民預設純單欄
+  const layoutSelect = document.getElementById("layout-select");
+  if (layoutSelect) {
+    if (subject === "English") {
+      layoutSelect.disabled = false;
+      if (!layoutSelect.value) layoutSelect.value = "single_column";
+    } else {
+      layoutSelect.value = "single_column";
+      layoutSelect.disabled = true;
+    }
+  }
+
+  // 年級與難度選單連動
+  const gradeSelect = document.getElementById("grade-level-select");
+  if (gradeSelect) {
+    if (subject === "English") {
+      gradeSelect.disabled = false;
+    } else {
+      gradeSelect.value = "J1";
+    }
+  }
+
   renderSectionCards();
   updateScoreSummary();
   loadUnitsList();
@@ -616,10 +640,20 @@ async function startGenerateExam() {
     questions_per_passage: parseInt(s.q_per_p) || 3
   }));
 
+  const layoutSelect = document.getElementById("layout-select");
+  const layoutStyle = layoutSelect ? layoutSelect.value : "single_column";
+
+  const gradeSelect = document.getElementById("grade-level-select");
+  const gradeLevel = gradeSelect ? gradeSelect.value : "J1";
+  const gradeText = gradeSelect && gradeSelect.selectedIndex >= 0 ? gradeSelect.options[gradeSelect.selectedIndex].text : "七年級";
+
   const payload = {
     metadata: {
       title: document.getElementById("exam-title").value,
       subject: currentSubject,
+      grade_level: gradeLevel,
+      grade: gradeText,
+      layout_style: layoutStyle,
       total_score: parseFloat(document.getElementById("stat-total-score").innerText),
       time_minutes: parseInt(document.getElementById("exam-time").value) || 45
     },
@@ -751,11 +785,25 @@ function renderExamPreview(examData) {
         </div>
       ` : '';
 
+      const curriculumBadge = q.curriculum_code ? `<span class="q-badge" style="background-color: #ede9fe; color: #5b21b6;">指標 ${q.curriculum_code}</span>` : '';
+
+      let distractorHtml = '';
+      if (q.distractor_analysis && typeof q.distractor_analysis === 'object') {
+        const items = Object.entries(q.distractor_analysis).map(([k, v]) => `<li><span style="font-weight:700;">選項 (${k})：</span>${v}</li>`).join('');
+        distractorHtml = `
+          <div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 0.78rem; color: #92400e;">
+            <strong>🎯 誘答干擾項心理學分析：</strong>
+            <ul style="margin: 0.2rem 0 0 1.2rem; padding: 0;">${items}</ul>
+          </div>
+        `;
+      }
+
       qCard.innerHTML = `
         <div class="q-header">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <span style="font-weight: 700; color: #1e293b;">第 ${q.question_number} 題</span>
             <span class="q-badge">${q.bloom_level || '應用'}</span>
+            ${curriculumBadge}
             ${isImageQ ? '<span class="q-badge" style="background-color: #fef08a; color: #854d0e;">圖表題</span>' : ''}
             <span style="font-size: 0.78rem; color: #64748b;">(${q.score || 2} 分)</span>
           </div>
@@ -769,6 +817,7 @@ function renderExamPreview(examData) {
         ${optionsHtml}
         <div class="q-explanation">
           <strong>【解答】${q.answer || '無'}</strong> ｜ <strong>【解析】</strong>${q.explanation || '依據文法與語境推導。'}
+          ${distractorHtml}
         </div>
       `;
       container.appendChild(qCard);
@@ -784,20 +833,43 @@ function renderExamPreview(examData) {
       pBox.style.marginBottom = "1.2rem";
 
       const subQCount = (p.sub_questions || []).length;
+      const footnotes = p.footnotes || p.glossary || [];
+      const footnotesHtml = footnotes.length > 0 ? `
+        <div style="margin-top: 0.6rem; padding: 0.4rem 0.7rem; background: #e2e8f0; border-radius: 6px; font-size: 0.8rem; color: #334155; border-left: 3px solid #64748b;">
+          <strong>* 單字註釋 (Glossary)：</strong> ${footnotes.map(fn => `<span style="margin-right: 0.75rem;"><strong>${fn.word}</strong> ${fn.meaning || fn.chinese || ''}</span>`).join('')}
+        </div>
+      ` : '';
+
       pBox.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.4rem;">
           <h4 style="font-size: 0.95rem; font-weight: 700; color: #1e293b;">📖 題組第 ${pIdx+1} 篇 (第 ${p.range_str || ''} 題)：${p.title || '閱讀文章'}</h4>
           <span style="font-size: 0.78rem; color: #64748b;">${subQCount} 題</span>
         </div>
         <p style="font-size: 0.88rem; line-height: 1.65; color: #334155; margin-bottom: 0.8rem; white-space: pre-line;">${p.content}</p>
+        ${footnotesHtml}
       `;
 
       (p.sub_questions || []).forEach(sq => {
+        const sqCurriculumBadge = sq.curriculum_code ? `<span class="q-badge" style="background-color: #ede9fe; color: #5b21b6;">指標 ${sq.curriculum_code}</span>` : '';
+        let sqDistractorHtml = '';
+        if (sq.distractor_analysis && typeof sq.distractor_analysis === 'object') {
+          const items = Object.entries(sq.distractor_analysis).map(([k, v]) => `<li><span style="font-weight:700;">選項 (${k})：</span>${v}</li>`).join('');
+          sqDistractorHtml = `
+            <div style="margin-top: 0.4rem; padding: 0.35rem 0.55rem; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 0.76rem; color: #92400e;">
+              <strong>🎯 誘答分析：</strong>
+              <ul style="margin: 0.2rem 0 0 1rem; padding: 0;">${items}</ul>
+            </div>
+          `;
+        }
+
         pBox.innerHTML += `
           <div class="q-card" style="margin-top: 0.8rem; border-color: #e2e8f0;">
             <div class="q-header">
-              <span style="font-weight: 700; font-size: 0.88rem;">第 ${sq.question_number} 題</span>
-              <span class="q-badge">${sq.bloom_level || '理解'}</span>
+              <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-weight: 700; font-size: 0.88rem;">第 ${sq.question_number} 題</span>
+                <span class="q-badge">${sq.bloom_level || '理解'}</span>
+                ${sqCurriculumBadge}
+              </div>
             </div>
             <div class="q-stem" style="font-size: 0.88rem;">${sq.stem}</div>
             <div class="q-options-grid">
@@ -807,6 +879,7 @@ function renderExamPreview(examData) {
             </div>
             <div class="q-explanation" style="font-size: 0.8rem;">
               <strong>【解答】${sq.answer || 'A'}</strong> ｜ ${sq.explanation || '無'}
+              ${sqDistractorHtml}
             </div>
           </div>
         `;
@@ -841,6 +914,9 @@ async function regenerateQuestion(sIdx, qNum) {
   const targetSection = currentExamData.sections[sIdx];
   const targetQ = (targetSection.questions || []).find(x => x.question_number === qNum) || {};
 
+  const gradeSelect = document.getElementById("grade-level-select");
+  const gradeLevel = currentExamData?.metadata?.grade_level || (gradeSelect ? gradeSelect.value : "J1");
+
   try {
     const res = await fetch("/api/regenerate-question", {
       method: "POST",
@@ -848,7 +924,8 @@ async function regenerateQuestion(sIdx, qNum) {
       body: JSON.stringify({
         subject: currentSubject,
         unit_ids: selectedUnits,
-        old_question: targetQ
+        old_question: targetQ,
+        grade_level: gradeLevel
       })
     });
     const newQ = await res.json();
@@ -927,8 +1004,14 @@ async function exportWordSuite() {
     return;
   }
 
+  // 同步當前選擇之排版風格 (純單欄 / 純雙欄)
+  const layoutSelect = document.getElementById("layout-select");
+  if (layoutSelect && currentExamData.metadata) {
+    currentExamData.metadata.layout_style = layoutSelect.value;
+  }
+
   const btn = document.getElementById("btn-export-suite");
-  btn.innerText = "⏳ 正在渲染成套 Word 文件 (雙欄排版與矩陣作答紙)...";
+  btn.innerText = "⏳ 正在渲染成套 Word 文件 (全卷統一排版與矩陣作答紙)...";
   btn.disabled = true;
 
   try {
@@ -947,11 +1030,11 @@ async function exportWordSuite() {
     linkBox.innerHTML = `
       <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
         <h3 style="color: #065f46; font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem;">🎉 成套考卷已成功生成完畢！</h3>
-        <p style="color: #047857; font-size: 0.85rem;">雙欄排版、選項自適應、手寫留白、矩陣作答紙與詳解本全部正確封裝完成。</p>
+        <p style="color: #047857; font-size: 0.85rem;">全卷格式統一排版、選項自適應、手寫底線表格、矩陣作答紙與詳解本全部正確封裝完成。</p>
       </div>
       <div style="display: flex; flex-direction: column; gap: 0.85rem;">
         <a href="/api/download?file=${encodeURIComponent(result.files.question_paper)}" class="btn btn-primary" download>
-          📄 下載【試題卷】(雙欄排版、題組生字註腳、非選留白)
+          📄 下載【試題卷】(全卷統一排版、題組生字註腳、底線表格非選留白)
         </a>
         <a href="/api/download?file=${encodeURIComponent(result.files.answer_sheet)}" class="btn btn-secondary" download>
           📝 下載【學生手寫作答紙】(10題一列表格矩陣、專用得分欄)

@@ -119,6 +119,49 @@ def format_options_text(options):
         return "vertical", [f"    {t}" for t in items]
 
 
+def add_underline_table(doc, width_in_inches, label="答："):
+    """非選擇題專用：隱藏邊框之底線表格 (防止折行破格)"""
+    tbl = doc.add_table(rows=1, cols=1)
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    cell = tbl.cell(0, 0)
+    cell.width = width_in_inches
+
+    # 行高與防跨頁撕裂 (cantSplit)
+    tr = tbl.rows[0]._tr
+    trPr = tr.get_or_add_trPr()
+    trHeight = OxmlElement('w:trHeight')
+    trHeight.set(qn('w:val'), '480')  # 24pt 手寫適宜高度
+    trHeight.set(qn('w:hRule'), 'atLeast')
+    trPr.append(trHeight)
+    trPr.append(OxmlElement('w:cantSplit'))
+
+    # 設置隱藏邊框：只有 bottom 邊框為 single，top/left/right 皆為 none
+    tcPr = cell._tc.get_or_add_tcPr()
+    tcBorders = OxmlElement('w:tcBorders')
+    for b_name, b_val in [('top', 'none'), ('left', 'none'), ('right', 'none'), ('bottom', 'single')]:
+        b_el = OxmlElement(f'w:{b_name}')
+        b_el.set(qn('w:val'), b_val)
+        if b_val != 'none':
+            b_el.set(qn('w:sz'), '6')  # 0.75 pt
+            b_el.set(qn('w:space'), '0')
+            b_el.set(qn('w:color'), '666666')
+        tcBorders.append(b_el)
+    tcPr.append(tcBorders)
+
+    p = cell.paragraphs[0]
+    p.paragraph_format.space_before = Pt(2)
+    p.paragraph_format.space_after = Pt(2)
+    p.paragraph_format.keep_with_next = False
+    r = p.add_run(label)
+    apply_font(r, size_pt=10, color_rgb=RGBColor(100, 100, 100))
+
+    # 表後微距
+    p_after = doc.add_paragraph()
+    p_after.paragraph_format.space_before = Pt(0)
+    p_after.paragraph_format.space_after = Pt(4)
+    return tbl
+
+
 # ==============================================================================
 # 1. 試題卷生成器 (Question Paper Generator)
 # ==============================================================================
@@ -126,8 +169,27 @@ def build_question_paper(exam_data, output_path):
     doc = Document()
     meta = exam_data.get("metadata", {})
     sections = exam_data.get("sections", [])
+    subject = meta.get("subject", "English")
 
-    # 1. 第一節 (單欄)：頁首標題與考生資料欄位
+    # 排版風格：英文科可選擇純單欄或純雙欄，其餘科目(國文/地理/歷史/公民)一律純單欄
+    layout_style = meta.get("layout_style", "single_column")
+    if subject in ["Chinese", "Geography", "History", "Civics"]:
+        layout_style = "single_column"
+
+    is_two_col = (layout_style == "two_column")
+
+    # 欄寬與圖表寬度標準鎖定
+    if is_two_col:
+        content_width = Inches(3.2)
+        chart_img_width = Inches(2.8)
+        box_width = Inches(3.2)
+    else:
+        # 單欄標準 (國中會考標準)
+        content_width = Inches(6.6)
+        chart_img_width = Inches(4.5)
+        box_width = Inches(6.6)
+
+    # 1. 設置第一節 (頁首標題與考生資料欄位)
     sec1 = doc.sections[0]
     set_section_margins(sec1)
     set_section_columns(sec1, num_cols=1)
@@ -151,11 +213,13 @@ def build_question_paper(exam_data, output_path):
     # 分隔線
     p_line = doc.add_paragraph()
     p_line.paragraph_format.space_after = Pt(6)
-    r_l = p_line.add_run("─" * 58)
+    line_char_count = 58 if is_two_col else 68
+    r_l = p_line.add_run("─" * line_char_count)
     apply_font(r_l, size_pt=9, color_rgb=RGBColor(128, 128, 128))
 
-    # 2. 第二節 (雙欄)：試題主體開始
-    add_continuous_section(doc, num_cols=2)
+    # 若為雙欄模式，在抬頭下方插入全卷唯一的雙欄分節 (內部徹底零分節)；純單欄則全卷單欄到底
+    if is_two_col:
+        add_continuous_section(doc, num_cols=2)
 
     for sec in sections:
         sec_title = sec.get("section_title", "")
@@ -163,7 +227,7 @@ def build_question_paper(exam_data, output_path):
         questions = sec.get("questions", [])
         passages = sec.get("passages", [])
 
-        # 大題標題 (粗體)
+        # 大題標題 (粗體，設定 keep_with_next 防孤行)
         p_sec = doc.add_paragraph()
         p_sec.paragraph_format.space_before = Pt(8)
         p_sec.paragraph_format.space_after = Pt(4)
@@ -171,7 +235,7 @@ def build_question_paper(exam_data, output_path):
         r_sec = p_sec.add_run(sec_title)
         apply_font(r_sec, size_pt=11, bold=True)
 
-        # A. 選擇題或填空題
+        # A. 選擇題或非選擇題
         if questions:
             for q in questions:
                 q_num = q.get("question_number", 1)
@@ -180,7 +244,7 @@ def build_question_paper(exam_data, output_path):
                 has_chart = q.get("has_chart", False) or bool(q.get("image_path"))
                 chart_path = q.get("image_path") or q.get("chart_path", "")
 
-                # 題幹 (設定 keep_with_next 防止題目與選項斷開)
+                # 題幹 (設定 keep_with_next 防止跨頁腰斬)
                 p_q = doc.add_paragraph()
                 p_q.paragraph_format.space_before = Pt(4)
                 p_q.paragraph_format.space_after = Pt(2)
@@ -188,55 +252,44 @@ def build_question_paper(exam_data, output_path):
                 r_q = p_q.add_run(f"{q_num}. {stem}")
                 apply_font(r_q, size_pt=10.5)
 
-                # 若題目含有插圖
+                # 圖片題/圖表題：會考標準排列與尺寸自動鎖定 (置中，單欄4.5"，雙欄2.8")
                 if has_chart and chart_path and os.path.exists(chart_path):
                     p_img = doc.add_paragraph()
                     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p_img.paragraph_format.space_before = Pt(2)
+                    p_img.paragraph_format.space_after = Pt(4)
                     p_img.paragraph_format.keep_with_next = True
                     r_img = p_img.add_run()
-                    r_img.add_picture(chart_path, width=Inches(2.8))
+                    r_img.add_picture(chart_path, width=chart_img_width)
 
-                # 選項排版
+                # 選項排版 (含防跨頁腰斬 keep_with_next)
                 if options:
                     mode, opt_lines = format_options_text(options)
                     for idx, line in enumerate(opt_lines):
                         p_opt = doc.add_paragraph()
                         p_opt.paragraph_format.space_before = Pt(0)
                         p_opt.paragraph_format.space_after = Pt(2 if idx == len(opt_lines) - 1 else 0)
+                        # 前面選項強制 keep_with_next，確保整題在同一欄/頁
                         p_opt.paragraph_format.keep_with_next = (idx < len(opt_lines) - 1)
                         r_opt = p_opt.add_run(line)
                         apply_font(r_opt, size_pt=10.5)
 
-                # 若為非選擇題 (無 options)，在題幹下方留白橫線
+                # 非選擇題 (無 options 或手寫題型)：採用隱藏邊框之底線表格
                 if sec_type in ["FILL_BLANK", "SENTENCE_REWRITE", "TRANSLATION", "SHORT_ANSWER"] and not options:
-                    p_blank = doc.add_paragraph()
-                    p_blank.paragraph_format.space_before = Pt(2)
-                    p_blank.paragraph_format.space_after = Pt(6)
-                    r_blank = p_blank.add_run("答：__________________________________________________")
-                    apply_font(r_blank, size_pt=10, color_rgb=RGBColor(80, 80, 80))
+                    add_underline_table(doc, width_in_inches=content_width, label="答：")
 
-        # B. 題組題 (GROUP_PASSAGE) - 支援長篇自適應全頁單欄
+        # B. 題組題 (GROUP_PASSAGE) - 徹底移除 Section Break，全在統一欄位內排列
         if passages:
             for pas in passages:
                 p_title = pas.get("title", "")
                 p_range = pas.get("range_str", "")
                 p_content = pas.get("content", "")
-                footnotes = pas.get("footnotes", [])
+                footnotes = pas.get("footnotes") or pas.get("glossary", [])
                 sub_qs = pas.get("sub_questions", [])
                 has_chart = pas.get("has_chart", False)
                 chart_path = pas.get("chart_path", "")
 
-                # 智能判定：長篇 (>120字) 或 指定全幅 時，切換為單欄模式閱讀
-                is_long_passage = len(p_content) > 120 or pas.get("is_full_width", False)
-
-                if is_long_passage:
-                    # 切換為單欄
-                    add_continuous_section(doc, num_cols=1)
-                    box_width = Inches(6.8)
-                else:
-                    box_width = Inches(3.4)
-
-                # 題組範圍標示
+                # 題組範圍標示 (防腰斬)
                 p_prange = doc.add_paragraph()
                 p_prange.paragraph_format.space_before = Pt(8)
                 p_prange.paragraph_format.space_after = Pt(2)
@@ -244,7 +297,7 @@ def build_question_paper(exam_data, output_path):
                 r_prange = p_prange.add_run(f"【第 {p_range} 題為題組】")
                 apply_font(r_prange, size_pt=10.5, bold=True)
 
-                # 題組文章方框 (單格淺灰底表格)
+                # 題組文章方框 (尺寸嚴格鎖定於目前欄寬，絕不切換 Section Break)
                 tbl = doc.add_table(rows=1, cols=1)
                 tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
                 cell = tbl.cell(0, 0)
@@ -267,13 +320,14 @@ def build_question_paper(exam_data, output_path):
                 r_bc = p_box.add_run(p_content)
                 apply_font(r_bc, size_pt=9.5)
 
-                # 題組若有插圖
+                # 題組若有插圖 (會考標準排列與尺寸鎖定)
                 if has_chart and chart_path and os.path.exists(chart_path):
-                    p_img = doc.add_paragraph()
-                    p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    p_img.paragraph_format.keep_with_next = True
-                    img_w = Inches(4.5) if is_long_passage else Inches(3.2)
-                    doc.add_picture(chart_path, width=img_w)
+                    p_pimg = doc.add_paragraph()
+                    p_pimg.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p_pimg.paragraph_format.space_before = Pt(2)
+                    p_pimg.paragraph_format.space_after = Pt(4)
+                    p_pimg.paragraph_format.keep_with_next = True
+                    p_pimg.add_run().add_picture(chart_path, width=chart_img_width)
 
                 # 生字註腳
                 if footnotes:
@@ -281,15 +335,11 @@ def build_question_paper(exam_data, output_path):
                     p_fn.paragraph_format.space_before = Pt(2)
                     p_fn.paragraph_format.space_after = Pt(4)
                     p_fn.paragraph_format.keep_with_next = True
-                    fn_texts = [f" {f.get('word', '')} {f.get('meaning', '')}" for f in footnotes]
+                    fn_texts = [f" {f.get('word', '')} {f.get('meaning') or f.get('chinese', '')}" for f in footnotes if f.get('word')]
                     r_fn = p_fn.add_run("  ".join(fn_texts))
                     apply_font(r_fn, size_pt=9.0, color_rgb=RGBColor(100, 100, 100))
 
-                # 若剛剛切換成單欄，文章結束後自動切回雙欄開始排子題！
-                if is_long_passage:
-                    add_continuous_section(doc, num_cols=2)
-
-                # 子題目 (雙欄排版)
+                # 子題目排版 (防腰斬 keep_with_next)
                 for sq in sub_qs:
                     sq_num = sq.get("question_number", 1)
                     stem = sq.get("stem", "")
@@ -534,16 +584,23 @@ def build_teacher_solution(exam_data, output_path):
             ans = q.get("answer", "")
             exp = q.get("explanation", "無解析")
             bloom = q.get("bloom_level", "未標記")
+            cc = q.get("curriculum_code")
+            cc_str = f"  [課綱指標：{cc}]" if cc else ""
 
             p_item = doc.add_paragraph()
             p_item.paragraph_format.space_before = Pt(4)
             p_item.paragraph_format.space_after = Pt(2)
-            r_num = p_item.add_run(f"第 {q_num} 題  【正確答案：{ans}】  [認知層次：{bloom}]\n")
+            r_num = p_item.add_run(f"第 {q_num} 題  【正確答案：{ans}】  [認知層次：{bloom}]{cc_str}\n")
             apply_font(r_num, size_pt=10.5, bold=True, color_rgb=RGBColor(0, 51, 102))
             r_st = p_item.add_run(f"題目：{stem}\n")
             apply_font(r_st, size_pt=10)
             r_ex = p_item.add_run(f"解析：{exp}\n")
             apply_font(r_ex, size_pt=10, color_rgb=RGBColor(50, 50, 50))
+            dist_analysis = q.get("distractor_analysis")
+            if dist_analysis and isinstance(dist_analysis, dict):
+                dist_str = " ； ".join([f"({k}) {v}" for k, v in dist_analysis.items()])
+                r_dist = p_item.add_run(f"誘答干擾項分析：{dist_str}\n")
+                apply_font(r_dist, size_pt=9.0, color_rgb=RGBColor(140, 70, 0))
 
         for p in s.get("passages", []):
             for sq in p.get("sub_questions", []):
@@ -552,16 +609,23 @@ def build_teacher_solution(exam_data, output_path):
                 ans = sq.get("answer", "")
                 exp = sq.get("explanation", "無解析")
                 bloom = sq.get("bloom_level", "未標記")
+                cc = sq.get("curriculum_code")
+                cc_str = f"  [課綱指標：{cc}]" if cc else ""
 
                 p_item = doc.add_paragraph()
                 p_item.paragraph_format.space_before = Pt(4)
                 p_item.paragraph_format.space_after = Pt(2)
-                r_num = p_item.add_run(f"第 {sq_num} 題 (題組)  【正確答案：{ans}】  [認知層次：{bloom}]\n")
+                r_num = p_item.add_run(f"第 {sq_num} 題 (題組)  【正確答案：{ans}】  [認知層次：{bloom}]{cc_str}\n")
                 apply_font(r_num, size_pt=10.5, bold=True, color_rgb=RGBColor(0, 51, 102))
                 r_st = p_item.add_run(f"題目：{stem}\n")
                 apply_font(r_st, size_pt=10)
                 r_ex = p_item.add_run(f"解析：{exp}\n")
                 apply_font(r_ex, size_pt=10, color_rgb=RGBColor(50, 50, 50))
+                dist_analysis = sq.get("distractor_analysis")
+                if dist_analysis and isinstance(dist_analysis, dict):
+                    dist_str = " ； ".join([f"({k}) {v}" for k, v in dist_analysis.items()])
+                    r_dist = p_item.add_run(f"誘答干擾項分析：{dist_str}\n")
+                    apply_font(r_dist, size_pt=9.0, color_rgb=RGBColor(140, 70, 0))
 
     doc.save(output_path)
     return output_path

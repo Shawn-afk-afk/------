@@ -75,6 +75,26 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">難度與適用年級 (依108課綱標準)</label>
+            <select id="grade-level-select" class="form-select">
+              <option value="J1" selected>國中七年級 (J1 · 基本1,200字前半 · 基礎句構)</option>
+              <option value="J2">國中八年級 (J2 · 基本1,200字中段 · 過去式/比較級)</option>
+              <option value="J3">國中九年級 (J3 · 基本1,200字全 · 完成式/被動/子句)</option>
+              <option value="S1">高中十年級 (S1 · 常用4,500字Level 1-3 · 五大句型)</option>
+              <option value="S2">高中十一年級 (S2 · 常用4,500字Level 1-4 · 分詞/倒裝)</option>
+              <option value="S3">高中十二年級 (S3 · 6,000字Level 1-5 · 假設法/綜合)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2col">
+          <div class="form-group">
+            <label class="form-label">考卷排版格式</label>
+            <select id="layout-select" class="form-select">
+              <option value="single_column">📄 全卷純單欄 (國中會考標準 · 圖文大方直覺)</option>
+              <option value="two_column">📑 全卷純雙欄 (高中學測/段考標準 · 緊湊省紙)</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">測驗時間 (分鐘)</label>
             <input type="number" id="exam-time" class="form-control" value="45" min="10" max="120">
           </div>
