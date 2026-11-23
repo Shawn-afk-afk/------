@@ -16,7 +16,7 @@ test_charts/
 uploads/
 scratch/
 *.docx
-!test_footer.docx
+/rag_index_cache.json
 
 # Large PDFs / 教材版權檔案保護 (避免 Public 倉庫侵權或檔案過大)
 B04_教師用書pdf檔/

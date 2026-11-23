@@ -15,6 +15,14 @@
 
 ---
 
+## 維護入口
+
+- 根目錄的 `app.py` 啟動 ExamCrafter 的教材出卷與 Word 匯出。
+- [知序整合版](llm-assessment/README.md) 使用獨立入口，涵蓋互動評量、AI 批改與教材工作室。
+- [出卷系統 v5 規格](出卷系統完整提示詞架構_v5.md) 記錄現行出卷設計。早期提示詞與測試產物可在 Git 歷史查閱。
+
+根目錄的 `rag_index_cache.json` 是本機教材索引。新副本從空索引起步，匯入教材後會在本機產生快取。若已有自己的索引檔，可把它放回專案根目錄繼續使用。
+
 ## 🌟 核心特色功能
 
 ### 1. 雙軌出題架構 (Dual-Track Generation)
@@ -66,7 +74,7 @@
 
 ### 1. 複製專案
 ```bash
-git clone https://github.com/<your-username>/ExamCrafter-AI.git
+git clone https://github.com/Shawn-afk-afk/------.git ExamCrafter-AI
 cd ExamCrafter-AI
 ```
 
