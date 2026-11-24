@@ -271,8 +271,20 @@ def routes(h,path,b,args,u,write):
                 else:name='';data=None;text=b.get('text','')
                 check(subject!='LLM','LLM 範圍請載入已保存的第一／二章來源；自訂教材請選一般科目')
                 mid=store_material(c,title,text,subject,name,data,locator='教師匯入：'+title);audit(c,u['id'],'exam_material_added',mid);return h.send({'id':mid})
-            rows=[dict(r) for r in c.execute('SELECT m.id,m.title,m.subject,m.source_id,m.locator,m.created_at,r.status rag_status,r.chunk_count,r.completed rag_completed,r.error rag_error,r.model embedding_model FROM exam_materials m LEFT JOIN rag_documents r ON r.material_id=m.id WHERE m.archived=0 ORDER BY m.id')]
+            rows=[dict(r) for r in c.execute('SELECT m.id,m.title,m.subject,m.source_id,m.locator,m.created_at,EXISTS(SELECT 1 FROM self_practice_materials sp WHERE sp.material_id=m.id) AS practice_shared,r.status rag_status,r.chunk_count,r.completed rag_completed,r.error rag_error,r.model embedding_model FROM exam_materials m LEFT JOIN rag_documents r ON r.material_id=m.id WHERE m.archived=0 ORDER BY m.id')]
         return h.send({'materials':rows,'generation_profile':model_slots.selected('generation')})
+    if path == '/api/admin/exam/share-practice-material' and write:
+        mid, shared = b.get('id'), b.get('shared')
+        check(isinstance(mid, str) and type(shared) is bool, '教材開放設定不合法')
+        with db() as c:
+            c.execute('BEGIN IMMEDIATE')
+            check(c.execute('SELECT 1 FROM exam_materials WHERE id=? AND archived=0', (mid,)).fetchone(), '教材不存在')
+            if shared:
+                c.execute('INSERT OR IGNORE INTO self_practice_materials VALUES(?)', (mid,))
+            else:
+                c.execute('DELETE FROM self_practice_materials WHERE material_id=?', (mid,))
+            audit(c, u['id'], 'self_practice_material_visibility', mid, {'shared': shared})
+        return h.send({'ok': True})
     if path=='/api/admin/exam/rag-status' and not write:
         with db() as c:rows=[dict(r) for r in c.execute('SELECT r.* FROM rag_documents r JOIN exam_materials m ON m.id=r.material_id WHERE m.archived=0')]
         return h.send({'documents':rows,'model':dense_rag.MODEL})

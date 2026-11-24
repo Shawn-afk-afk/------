@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 import analysis
 import adaptive
+import self_practice
 import runner
 import collab
 import model_slots
@@ -250,7 +251,7 @@ class Handler(BaseHTTPRequestHandler):
                     page=(STATIC/'index.html').read_bytes().replace(b'__STYLE_NONCE__',nonce.encode())
                     return self.send(page,content_type='text/html; charset=utf-8',style_nonce=nonce)
                 writing_assets={'writing/app.js','writing/app.css','writing/editor-deps.js','writing/workspace.html','writing/teacher.html','writing/teacher.js'}
-                require(name in {'index.html','app.js','guide.js','canvas.js','studio.js','rag.js','models.js','i18n.js','translations.js','sounds.js','app.css','retro.css','sandbox.html','sandbox.js','worker.mjs','favicon.svg'} or name in writing_assets or name.startswith(('vendor/pyodide/','vendor/98/','vendor/win98-sounds/')),'找不到頁面',404)
+                require(name in {'index.html','app.js','self-practice.js','guide.js','canvas.js','studio.js','rag.js','models.js','i18n.js','translations.js','sounds.js','app.css','retro.css','sandbox.html','sandbox.js','worker.mjs','favicon.svg'} or name in writing_assets or name.startswith(('vendor/pyodide/','vendor/98/','vendor/win98-sounds/')),'找不到頁面',404)
                 target=(STATIC/name).resolve()
                 require(target.is_relative_to(STATIC.resolve()) and target.is_file(),'找不到檔案',404)
                 ctype=mimetypes.guess_type(name)[0] or 'application/octet-stream'
@@ -299,6 +300,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send({'ok':True},cookie=f'assessment_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age={SESSION_SECONDS}'+secure)
             u=self.identity()
             if write:self.csrf(u)
+            if path=='/api/self-practice' or path.startswith('/api/self-practice/'):
+                return self.send(self_practice.routes(path,body,u,write))
             if path=='/api/preferences':
                 if not write:return self.send({'locale':u['ui_locale']})
                 locale=body.get('locale');require(locale in ('zh-TW','en','ja','es'),'語言偏好不支援')
@@ -386,6 +389,7 @@ class Handler(BaseHTTPRequestHandler):
                         values=[dict(r) for r in c.execute('SELECT question_version_id,response_json FROM responses WHERE attempt_id=? ORDER BY question_version_id',(attempt['id'],))]
                         jid=uid();c.execute('INSERT INTO analysis_jobs(id,attempt_id,input_hash,analyzer_version,status,created_at) VALUES(?,?,?,?,?,?)',(jid,attempt['id'],hash_input(values),analysis.VERSION,'queued',time.time()))
                         audit(c,u['id'],'submitted',s['id'])
+                        c.commit()
                         return self.send({'ok':True,'job_id':jid})
                 raise ApiError(404,'找不到操作')
             if path=='/api/reports' and not write:
@@ -396,6 +400,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(404,'找不到 API')
         except ApiError as exc:self.send({'error':exc.message},exc.status)
         except collab.CollabError as exc:self.send({'error':exc.message},exc.status)
+        except self_practice.PracticeError as exc:self.send({'error':str(exc)},exc.status)
         except writing.WritingError as exc:self.send({'error':exc.message},exc.status)
         except (model_slots.SlotError,exam_studio.ExamError,dense_rag.RagError) as exc:self.send({'error':str(exc)},400)
         except sqlite3.IntegrityError:self.send({'error':'資料已存在或關聯不合法'},409)
