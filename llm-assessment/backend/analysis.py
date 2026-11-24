@@ -9,8 +9,9 @@ import os
 import model_slots
 from storage import db,decode,encode,uid,audit
 import runner
+import adaptive
 
-VERSION='evidence-ai-1.2'
+VERSION='evidence-ai-1.3'
 STOP=threading.Event()
 OLLAMA_URL=os.environ.get('ASSESSMENT_OLLAMA_URL','http://127.0.0.1:11434').rstrip('/')
 MODEL_LOCK=threading.Lock()
@@ -90,7 +91,7 @@ def ai_criteria(q,response,fixed,config=None):
 英文題允許中英文作答，只評概念與題目要求的技術，不因英文文法或語言選擇扣分。
 AI 協作脈絡只用於辨識提示條件，不得把助教的回應當作學生獨立理解；初稿只用 canvas.initial_text，獨立遷移只用 canvas.independent_text，已確認的辨識內容仍不等於學生解釋。
 若提供 evidence_by_criterion，每項只依其對應的字串評分及引用 quote，不能引用其他階段的內容補分。revision 必須核對學生 text 中真正寫出的接受／拒絕及修改理由，不可拿 initial_text 代替。
-每項回傳 id、level (0..3整數)、quote、reason、feedback。quote 必須是作答 JSON 中可找到的原文子字串。
+每項回傳 id、level (0..max_level整數；max_level=1 時 0=未達成、1=達成)、quote、reason、feedback。quote 必須是作答 JSON 中可找到的原文子字串。
 有正分時必須提供真實作答證據。未展現或空白給0，不能補造學生的推理。
 區分案例讀懂、原因假設、機制可行性、控制變因、基準／指標、資源與失敗判準。
 題目指定的數值、條件與必答項目必須逐項核對；其他自選例子不能替代指定案例的答案。部分展現只給部分等級，不能因整體文筆流暢而給滿分。
@@ -110,7 +111,7 @@ AI 協作脈絡只用於辨識提示條件，不得把助教的回應當作學�
         requested={r['id'] for r in rubric}
         if len(items)!=len(requested) or {x.get('id') for x in items}!=requested: raise ValueError('AI 分項缺漏或重複')
         for x in items:
-            if type(x.get('level')) is not int or x['level'] not in range(4): raise ValueError('AI 等級不合法')
+            if type(x.get('level')) is not int or x['level'] not in range(next(r['max_level'] for r in rubric if r['id']==x['id'])+1): raise ValueError('AI 等級不合法')
             quote=x.get('quote','')
             if not isinstance(quote,str) or len(quote)>3000 or (quote and not any(quote in s for s in evidence_texts)): raise ValueError('AI 引文無法回指作答')
             if scoped_evidence and quote and not any(quote in s for s in scoped_evidence.get(x['id'],[])): raise ValueError('AI 引文引用了錯誤的作答階段')
@@ -127,27 +128,27 @@ def grade(q,response,config=None):
     ok,evidence=objective(q,response)
     if ok is not None:
         first=criteria[0]['id']
-        fixed[first]={'id':first,'level':3 if ok else 0,'quote':evidence,'reason':'互動結構符合核准答案' if ok else '互動結構與核准答案不符','feedback':'檢查概念與操作順序；解釋部分另行評分。','method':'rule','status':'scored'}
+        fixed[first]={'id':first,'level':criteria[0]['max_level'] if ok else 0,'quote':evidence,'reason':'互動結構符合核准答案' if ok else '互動結構與核准答案不符','feedback':'檢查概念與操作順序；解釋部分另行評分。','method':'rule','status':'scored'}
     if q.get('version')==1 and q.get('question_id','').startswith('ZJU-') and q['title']=='條件機率拼圖':
         value=response.get('interaction',{}).get('result','')
         try:correct=math.isclose(float(str(value).strip()),.25,abs_tol=1e-8)
         except ValueError:correct=str(value).strip() in ('2/8','1/4','25%')
         cid=criteria[1]['id']
-        fixed[cid]={'id':cid,'level':3 if correct else 0,'quote':str(value),'reason':'指定數值 2/8 = 0.25' if correct else '未填入指定案例的正確數值','feedback':'將 C(A,B)=2 除以 C(A)=8，並填入計算結果欄。','method':'rule','status':'scored'}
+        fixed[cid]={'id':cid,'level':criteria[1]['max_level'] if correct else 0,'quote':str(value),'reason':'指定數值 2/8 = 0.25' if correct else '未填入指定案例的正確數值','feedback':'將 C(A,B)=2 除以 C(A)=8，並填入計算結果欄。','method':'rule','status':'scored'}
     test_result=None
     if q['kind']=='python':
         test_result=runner.run(response.get('code',''),q['tests'],hidden=True)
         if test_result.get('status')=='completed':
             first=criteria[0]['id']
             ratio=test_result['passed']/max(test_result['total'],1)
-            level=3 if ratio==1 else (2 if ratio>=.7 else 1 if ratio>0 else 0)
+            level=(int(ratio==1) if criteria[0]['max_level']==1 else (3 if ratio==1 else (2 if ratio>=.7 else 1 if ratio>0 else 0)))
             fixed[first]={'id':first,'level':level,'quote':f"測試 {test_result['passed']}/{test_result['total']}",'reason':'隔離 Linux 執行公開與隱藏測試','feedback':'查看邊界案例並說明驗證策略。','method':'sandbox_tests','status':'scored'}
     ai,error=ai_criteria(q,response,fixed,config)
     indexed={x['id']:x for x in ai}; indexed.update(fixed)
     findings=[]
     for r in criteria:
         finding=indexed.get(r['id'],{'id':r['id'],'level':None,'quote':'','reason':error or '待分析','feedback':'可由管理者補充分項評分。','method':'pending','status':'needs_review'})
-        finding.update({'name':r['name'],'max_points':r['points'],'max_level':r['max_level']})
+        finding.update({'name':r['name'],'max_points':r['points'],'max_level':r['max_level'],'skill_id':r.get('skill_id',q.get('skill_id',q['analysis_metadata'].get('target_skill')))})
         finding['points']=round(r['points']*finding['level']/r['max_level'],4) if finding['level'] is not None else None
         findings.append(finding)
     complete=all(x['points'] is not None for x in findings)
@@ -155,19 +156,12 @@ def grade(q,response,config=None):
     if not response.get('text') and not response.get('code') and not response.get('interaction') and not any(response.get('proposal',{}).values()):
         observations.append({'rule_id':'LLM-COMPLETE','observation':'本次未展現作答','status':'observed'})
     for x in findings:
-        if x['level'] is not None and x['level']<2:
+        if adaptive.achieved(x) is False:
             observations.append({'rule_id':'LLM-REASON' if q['kind']=='case_proposal' else 'LLM-CONCEPT','criterion_id':x['id'],'observation':x['reason'],'quote':x['quote'],'status':'hypothesis','alternatives':['表達省略','題意或操作理解不同'],'feedback':x['feedback']})
     return {'question_version_id':q['id'],'question_id':q['question_id'],'title':q['title'],'skill_id':q.get('skill_id',q['analysis_metadata'].get('target_skill')),'kind':q['kind'],'difficulty_design':q.get('difficulty_design'),'rubric_fingerprint':__import__('hashlib').sha256(encode(q['rubric']).encode()).hexdigest(),'criteria':findings,'complete':complete,'raw_points':round(sum(x['points'] or 0 for x in findings),4),'raw_max':q['rubric']['total_points'],'observations':observations,'test_result':test_result,'error':error,'response':response}
 
 def recommendations(c,learner_id,result):
-    weak={x['skill_id'] for x in result['items'] if any(r['level'] is not None and r['level']<2 for r in x['criteria'])}
-    used={x['question_version_id'] for x in result['items']}
-    used.update(r[0] for r in c.execute('SELECT ai.question_version_id FROM assignment_items ai JOIN assignment_recipients ar ON ar.assignment_id=ai.assignment_id WHERE ar.learner_id=?',(learner_id,)))
-    used.update(r[0] for r in c.execute('SELECT question_version_id FROM recommendations WHERE learner_id=?',(learner_id,)))
-    pool=c.execute("SELECT v.id,v.title,q.skill_id FROM question_versions v JOIN questions q ON q.id=v.question_id WHERE v.review_status='approved' AND v.version=(SELECT MAX(v2.version) FROM question_versions v2 WHERE v2.question_id=v.question_id)").fetchall()
-    for item in pool:
-        if item['skill_id'] in weak and item['id'] not in used:
-            c.execute('INSERT INTO recommendations VALUES(?,?,?,?,?)',(uid(),learner_id,item['id'],encode({'skill':item['skill_id'],'reason':'本次有已評分分項未達標；推薦同技能未出現題型','algorithm':'skill-filter-v1'}),'draft'))
+    adaptive.refresh_recommendations(c, learner_id)
 
 def process(job):
     config=settings()

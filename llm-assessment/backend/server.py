@@ -19,6 +19,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 import analysis
+import adaptive
 import runner
 import collab
 import model_slots
@@ -72,9 +73,10 @@ def validate_question(q):
     for r in criteria:
         require(isinstance(r.get('id'),str) and r['id'] not in ids,'分項 ID 必須唯一')
         ids.append(r['id'])
-        require(type(r.get('max_level')) is int and r['max_level']==3,'目前分項使用 0–3 級')
+        require('skill_id' not in r or isinstance(r['skill_id'],str) and 1<=len(r['skill_id'])<=100,'技能編碼不合法')
+        require(type(r.get('max_level')) is int and r['max_level'] in (1,3),'分項使用布林 0–1 或 0–3 級')
         require(type(r.get('points')) in (int,float) and math.isfinite(r['points']) and 0<r['points']<=1000,'分項配分不合法')
-        require(set(r.get('levels',{}))=={'0','1','2','3'},'需完整 0–3 級描述')
+        require(set(r.get('levels',{}))=={str(v) for v in range(r['max_level']+1)},'需完整分項等級描述')
     require(abs(sum(r['points'] for r in criteria)-rubric.get('total_points',0))<1e-5,'分項配分加總不符')
     if q['kind']=='python':
         t=q.get('tests',{})
@@ -105,6 +107,9 @@ def add_version(c,q,actor,qid=None):
     validate_question(q)
     skill=q.get('skill_id') or q.get('analysis_metadata',{}).get('target_skill')
     require(c.execute('SELECT 1 FROM skills WHERE id=?',(skill,)).fetchone(),'技能不存在')
+    for criterion in q['rubric']['criteria']:
+        if criterion.get('skill_id'):
+            require(c.execute('SELECT 1 FROM skills WHERE id=?',(criterion['skill_id'],)).fetchone(),'分項技能不存在')
     require(c.execute('SELECT 1 FROM sources WHERE id=?',(q.get('source_id'),)).fetchone(),'教材來源不存在')
     if not qid:
         qid='CUSTOM-'+uid()[:8];c.execute('INSERT INTO questions VALUES(?,?)',(qid,skill))
@@ -386,7 +391,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/reports' and not write:
                 with db() as c:
                     rows=c.execute('SELECT p.id,p.submission_id,p.report_json,a.title FROM published_reports p JOIN submissions s ON s.id=p.submission_id JOIN learners l ON l.id=s.learner_id JOIN assignments a ON a.id=s.assignment_id WHERE l.user_id=? AND p.rowid=(SELECT MAX(p2.rowid) FROM published_reports p2 WHERE p2.submission_id=p.submission_id) ORDER BY p.rowid DESC',(u['id'],)).fetchall()
-                    return self.send({'reports':[{'id':r['id'],'submission_id':r['submission_id'],'title':r['title'],'report':decode(r['report_json'])} for r in rows]})
+                    learner=c.execute('SELECT id FROM learners WHERE user_id=?',(u['id'],)).fetchone()
+                    return self.send({'skills':adaptive.profiles(c,learner['id']) if learner else [],'reports':[{'id':r['id'],'submission_id':r['submission_id'],'title':r['title'],'report':decode(r['report_json'])} for r in rows]})
             raise ApiError(404,'找不到 API')
         except ApiError as exc:self.send({'error':exc.message},exc.status)
         except collab.CollabError as exc:self.send({'error':exc.message},exc.status)
@@ -522,6 +528,7 @@ class Handler(BaseHTTPRequestHandler):
                     if manual:data['result']=decode(manual['result_json'])
                     # Management can inspect full snapshot and expected answers.
                     data['private_items']=[decode(x['question_json']) for x in c.execute('SELECT question_json FROM assignment_snapshots WHERE assignment_id=? ORDER BY position',(s['assignment_id'],))]
+                    data['skills']=adaptive.profiles(c,s['learner_id'])
                     data['review_history']=[dict(x) for x in c.execute('SELECT * FROM manual_adjustments WHERE submission_id=? ORDER BY revision',(sid,))]
                     return self.send(data)
                 if action=='reopen':
@@ -549,10 +556,13 @@ class Handler(BaseHTTPRequestHandler):
                 for item in result['items']:
                     for r in item['criteria']:
                         key=item['question_version_id']+':'+r['id']
-                        level=levels.get(key,r['level']);require(type(level) is int and level in range(4),'全部分項需有 0–3 級評分')
+                        level=levels.get(key,r['level']);require(type(level) is int and level in range(r['max_level']+1),'分項評分超過規準範圍')
                         r.setdefault('original_level',r['level']);r['level']=level;r['points']=round(r['max_points']*level/r['max_level'],4);r['method']='human_review';r['status']='scored'
-                    item['complete']=True;item['score']=round(sum(x['points'] for x in item['criteria'])/item['raw_max']*item['assigned_points'],2)
+                    item['complete']=True;item['raw_points']=round(sum(x['points'] for x in item['criteria']),4);item['score']=round(item['raw_points']/item['raw_max']*item['assigned_points'],2)
                 result.update({'complete':True,'score':round(sum(x['score'] for x in result['items']),2),'source':'人工覆核／調整','review_note':note,'reviewed_at':now()})
+                condition=b.get('evidence_condition', result.get('evidence_condition','unknown'))
+                require(condition in ('unknown','independent','supported'),'作答條件不合法')
+                result['evidence_condition']=condition
                 revision=c.execute('SELECT COALESCE(MAX(revision),0)+1 FROM manual_adjustments WHERE submission_id=?',(sid,)).fetchone()[0]
                 c.execute('INSERT INTO manual_adjustments(id,submission_id,reviewer_id,revision,result_json,attempt_id) VALUES(?,?,?,?,?,?)',(uid(),sid,u['id'],revision,encode(result),attempt_id))
                 decision=uid();c.execute('INSERT INTO review_decisions VALUES(?,?,?,?)',(decision,run['id'],u['id'],encode({'levels':levels,'note':note,'revision':revision})))
@@ -584,7 +594,7 @@ class Handler(BaseHTTPRequestHandler):
                         seen.add(fingerprint)
                         key=(row['learner_id'],row['mode'],support,item['skill_id'],item.get('kind'),item.get('difficulty_design'),item.get('rubric_fingerprint'));g=groups.setdefault(key,{'learner':names[row['learner_id']],'learner_id':row['learner_id'],'mode':row['mode'],'skill':item['skill_id'],'kind':item.get('kind'),'difficulty':item.get('difficulty_design'),'support':options.get('support_note',''),'allow_practice':options.get('allow_practice'),'allow_browser':options.get('allow_browser'),'rubric_fingerprint':item.get('rubric_fingerprint'),'met':0,'count':0,'unknown':0})
                         if not item['complete']:g['unknown']+=1
-                        else:g['count']+=1;g['met']+=int(all(x['level']>=2 for x in item['criteria']))
+                        else:g['count']+=1;g['met']+=int(all(adaptive.achieved(x) is True for x in item['criteria']))
                 return self.send({'overview':list(groups.values()),'recommendations':[dict(r) for r in c.execute('SELECT r.*,v.title,u.display_name FROM recommendations r JOIN question_versions v ON v.id=r.question_version_id JOIN learners l ON l.id=r.learner_id JOIN users u ON u.id=l.user_id ORDER BY r.rowid DESC LIMIT 100')]})
         if path=='/api/admin/export' and not write:
             require(args.get('format',['json'])[0]=='json','匯出格式不支援')
