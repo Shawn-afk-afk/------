@@ -1,0 +1,116 @@
+  <header class="writing-toolbar window">
+    <div class="toolbar">
+      <div class="workspace-controls" id="workspace-controls" hidden>
+        <label class="sr-only" for="room-select">切換作品</label><select id="room-select" hidden></select>
+        <button id="new-room" class="button" type="button">新增作品</button>
+      </div>
+      <nav class="header-actions" aria-label="作品操作">
+        <span id="role-label"></span>
+        <button id="settings" class="button" type="button" hidden>作品設定</button>
+      </nav>
+    </div>
+  </header>
+
+  <section class="welcome" id="welcome">
+    <section class="window">
+      <div class="title-bar"><h1 class="title-bar-text">創意寫作 IDE</h1></div>
+      <div class="window-body">
+        <p id="welcome-text">正在開啟寫作工作區…</p>
+        <button id="welcome-create" class="button primary" type="button" hidden>建立作品</button>
+      </div>
+    </section>
+  </section>
+
+  <section id="studio" class="studio" hidden>
+    <aside class="explorer window" aria-label="作品瀏覽器">
+      <div class="pane-bar title-bar"><h2 class="title-bar-text">作品瀏覽器</h2><button id="new-chapter" class="icon-button" type="button" aria-label="新增篇章" title="新增篇章">＋</button></div>
+      <div id="chapter-list" class="chapter-list sunken-panel"></div>
+      <details id="brief" open><summary>題目與寫作目標</summary><p id="brief-text"></p><div id="room-references"></div></details>
+      <details open><summary>篇章大綱</summary><div id="outline"></div></details>
+    </aside>
+
+    <section class="writing-editor-pane window" aria-label="稿件編輯器">
+      <div class="editor-bar title-bar">
+        <div class="file-tab"><span class="file-mark" aria-hidden="true">▤</span><span id="chapter-title"></span></div>
+        <div class="editor-actions">
+          <button id="quote-selection" class="button quiet" type="button">引用討論</button>
+          <button id="snapshot" class="button quiet" type="button">存版本</button>
+          <button id="export" class="button quiet" type="button">匯出</button>
+          <button id="submit-writing" class="button primary" type="button" hidden>繳交作業</button>
+        </div>
+      </div>
+      <div id="editor" class="sunken-panel"></div>
+      <div class="editor-footer status-bar">
+        <span id="editor-count" class="status-bar-field">0 字</span>
+        <div class="inline-actions">
+          <span id="inline-label" class="key-hint" hidden><kbd>Tab</kbd> 接受 <kbd>Esc</kbd> 略過</span>
+          <div class="toggle field-row"><input id="inline-enabled" type="checkbox"><label for="inline-enabled">行內續寫</label></div>
+          <button id="try-inline" class="button quiet" type="button">提示幾個字</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="rail window" aria-label="討論與修訂">
+      <div class="pane-bar rail-nav" role="group" aria-label="側欄">
+        <button id="show-chat" type="button" aria-pressed="true">討論室</button>
+        <button id="show-versions" type="button" aria-pressed="false">版本</button>
+        <button id="show-feedback" type="button" aria-pressed="false" hidden>批改回饋</button>
+      </div>
+      <section id="chat-pane" aria-label="討論室">
+        <div class="room-status">
+          <span id="policy-label"></span>
+          <button id="pause" class="button quiet" type="button" hidden>暫停主動發言</button>
+        </div>
+        <div id="people" class="people" aria-label="成員"></div>
+        <div id="messages" class="messages sunken-panel" role="log" aria-label="討論記錄" aria-live="off"></div>
+        <form class="composer" id="message-form">
+          <div id="quoted" class="quoted" hidden><span id="quoted-text"></span><button id="remove-quote" class="icon-button" aria-label="移除引用" type="button">×</button></div>
+          <label class="sr-only" for="message">討論內容</label>
+          <textarea id="message" rows="3" maxlength="2000" placeholder="討論這篇作品…"></textarea>
+          <div class="composer-actions">
+            <button id="mention" class="button quiet" type="button">@助教</button>
+            <button id="send" class="button primary" type="submit">送出</button>
+          </div>
+        </form>
+      </section>
+      <section id="versions-pane" aria-label="篇章版本" hidden><div id="versions"></div></section>
+      <section id="feedback-pane" class="sunken-panel" aria-label="批改回饋" hidden>
+        <p id="submission-status" role="status"></p>
+        <strong id="review-score"></strong>
+        <p id="review-feedback"></p>
+      </section>
+    </aside>
+  </section>
+
+  <footer class="statusbar status-bar window"><span class="status-bar-field" id="sync-status" role="status">準備中</span><span class="status-bar-field" id="mode-status"></span></footer>
+  <div id="notice" class="notice window" role="status" hidden></div>
+
+  <dialog class="window" id="submit-dialog" aria-labelledby="submit-title">
+    <div class="dialog-head title-bar"><h2 class="title-bar-text" id="submit-title">確認繳交</h2><button type="button" class="icon-button" data-close aria-label="關閉">×</button></div>
+    <p class="window-body" id="submit-note"></p>
+    <div class="dialog-actions"><button id="confirm-writing" class="button primary" type="button">確認繳交</button></div>
+  </dialog>
+
+  <dialog class="window" id="room-dialog" aria-labelledby="room-dialog-title">
+    <form id="room-form">
+      <div class="dialog-head title-bar"><h2 class="title-bar-text" id="room-dialog-title"></h2><button type="button" class="icon-button" data-close aria-label="關閉">×</button></div>
+      <label>作品名稱<input id="room-title" required maxlength="100"></label>
+      <label>助教介入<select id="room-policy"><option value="called">僅被呼叫時</option><option value="active">可以主動發言</option><option value="off">關閉助教</option></select></label>
+      <div class="dialog-actions"><button class="button primary" type="submit">儲存作品設定</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="window" id="text-dialog" aria-labelledby="text-dialog-title">
+    <form id="text-form">
+      <div class="dialog-head title-bar"><h2 class="title-bar-text" id="text-dialog-title"></h2><button type="button" class="icon-button" data-close aria-label="關閉">×</button></div>
+      <label id="text-label" for="dialog-input"></label>
+      <input id="dialog-input" required maxlength="180">
+      <div class="dialog-actions"><button class="button primary" type="submit">確認</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="version-dialog" class="wide-dialog window" aria-labelledby="version-title">
+    <div class="dialog-head title-bar"><h2 class="title-bar-text" id="version-title">比對版本</h2><button type="button" class="icon-button" data-close aria-label="關閉">×</button></div>
+    <div class="compare"><section><h3 id="saved-label">保存版本</h3><pre id="saved-body"></pre></section><section><h3>目前稿件</h3><pre id="current-body"></pre></section></div>
+    <div class="dialog-actions"><button id="restore" class="button" type="button">還原版本</button></div>
+  </dialog>

@@ -1,0 +1,88 @@
+<div class="teacher-layout">
+  <aside class="window assignment-list" aria-label="寫作題目清單">
+    <div class="title-bar"><h2 class="title-bar-text">寫作題目</h2></div>
+    <div class="window-body">
+      <button id="new-assignment" type="button">新增寫作題目</button>
+      <div id="assignment-list" class="sunken-panel"></div>
+    </div>
+  </aside>
+
+  <section class="window teacher-form-panel" aria-labelledby="assignment-heading">
+    <div class="title-bar"><h2 class="title-bar-text" id="assignment-heading">出寫作題目</h2><button type="button" id="jump-submissions" hidden>查看作業批改</button></div>
+    <form class="window-body teacher-form" id="assignment-form">
+      <label>題目名稱<input id="room-title" required maxlength="100"></label>
+      <label>寫作方式<select id="room-mode"><option value="free">自由寫作</option><option value="themed">主題式寫作</option><option value="paragraph">段落寫作</option></select></label>
+      <label>題目與要求<textarea id="room-prompt" maxlength="6000" rows="3" placeholder="也可以填入大綱或角色設定"></textarea></label>
+      <fieldset id="topic-generator">
+        <legend>AI 引導式出題</legend>
+        <label for="topic-instruction">出題提示詞</label>
+        <textarea id="topic-instruction" rows="3" maxlength="5000" placeholder="例如：以校園手機使用為主題，引導高中生從自己的經驗立論，寫出兩項理由。"></textarea>
+        <button type="button" id="generate-topic">產生題目草稿</button>
+        <p id="topic-status" role="status"></p>
+        <div id="topic-preview" hidden>
+          <pre id="topic-result" class="sunken-panel"></pre>
+          <button type="button" id="apply-topic">套用題目草稿</button>
+        </div>
+      </fieldset>
+      <div class="field-pair">
+        <label>作品目標字數<input id="room-target" type="number" min="0" max="100000" required value="0"><small>0 表示不限</small></label>
+        <label>AI 每次代擬上限<input id="room-limit" type="number" min="0" max="1000" required value="120"><small>0 表示關閉代擬與行內續寫</small></label>
+      </div>
+      <fieldset class="material-picker">
+        <legend>教師教材庫</legend>
+        <div class="material-actions">
+          <label class="sr-only" for="material-select">選擇教材</label>
+          <select id="material-select"></select>
+          <button id="preview-material" type="button">開啟原文</button>
+        </div>
+        <p id="materials-status" role="status"></p>
+        <div id="material-preview" hidden>
+          <label for="material-text" id="material-title">教材原文</label>
+          <textarea id="material-text" rows="5" readonly></textarea>
+          <button id="attach-material" type="button">加入範圍</button>
+          <small>可選取原文中的一段。未選取時使用開頭片段。</small>
+        </div>
+        <div id="selected-materials"></div>
+      </fieldset>
+
+      <label>助教介入<select id="room-policy">
+        <option value="called">僅被呼叫時</option><option value="active">可以主動發言</option><option value="off">關閉助教</option>
+      </select></label>
+      <label>作答方式<select id="distribution">
+        <option value="individual">個別作答 · 每位學生有獨立草稿</option>
+        <option value="group">共同寫作 · 所選學生共用一份草稿</option>
+      </select></label>
+      <fieldset class="student-picker">
+        <legend>分配學生</legend>
+        <div id="assigned-students" hidden></div>
+        <label for="student-select">選擇學生，可複選</label>
+        <select id="student-select" multiple size="4"></select>
+        <p id="students-status"></p>
+      </fieldset>
+      <div class="teacher-actions">
+        <button class="button primary" type="submit" id="save-assignment">發出題目</button>
+        <p id="teacher-status" role="status"></p>
+      </div>
+    </form>
+    <section class="window-body sunken-panel" id="submissions-panel" aria-labelledby="submissions-heading" hidden>
+      <h2 id="submissions-heading">作業繳交與批改</h2>
+      <button type="button" id="refresh-submissions">更新繳交清單</button>
+      <div id="submission-list"></div>
+    </section>
+  </section>
+</div>
+
+<dialog class="window wide-dialog" id="review-dialog" aria-labelledby="review-title">
+  <div class="dialog-head title-bar"><h2 id="review-title" class="title-bar-text">批改寫作作業</h2><button id="close-review" class="icon-button" type="button" aria-label="關閉">×</button></div>
+  <form id="review-form" class="window-body">
+    <div id="review-snapshot" class="sunken-panel"></div>
+    <label>分數（滿分 100）<input id="teacher-score" type="number" required min="0" max="100" step="1"></label>
+    <label>給學生的回饋<textarea id="teacher-feedback" rows="5" maxlength="5000" required></textarea></label>
+    <div class="teacher-actions">
+      <button id="draft-review" type="button">AI 建議批改</button>
+      <button id="publish-review" type="submit">發布回饋</button>
+      <button id="reopen-writing" type="button">開放修訂</button>
+    </div>
+    <p id="review-status" role="status"></p>
+  </form>
+</dialog>

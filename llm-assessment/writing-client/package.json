@@ -1,0 +1,16 @@
+{
+  "name": "zixu-writing-editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild editor-deps.js --bundle --format=esm --minify --legal-comments=external --outfile=../static/writing/editor-deps.js && node licenses.mjs"
+  },
+  "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "esbuild": "0.28.2",
+    "y-codemirror.next": "0.3.6",
+    "yjs": "13.6.33"
+  }
+}

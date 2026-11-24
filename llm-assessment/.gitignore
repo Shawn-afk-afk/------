@@ -15,3 +15,5 @@ tests/__pycache__/
 *.log
 OmniEdu-final-*/
 Foundations-of-LLMs/
+
+writing-client/node_modules/

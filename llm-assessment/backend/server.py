@@ -14,6 +14,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from contextlib import ExitStack
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -24,11 +25,16 @@ import model_slots
 import model_library
 import exam_studio
 import dense_rag
+import writing
 from storage import db,initialize,uid,encode,decode,question,latest_questions,hash_input,audit,DB_PATH
 
 STATIC=Path(__file__).resolve().parents[1]/'static'
 MAX_BODY=12_000_000
 SESSION_SECONDS=8*3600
+DEMO_PASSWORD_KEYS={
+    'teacher':'ASSESSMENT_DEMO_TEACHER_PASSWORD',
+    'student':'ASSESSMENT_DEMO_STUDENT_PASSWORD',
+}
 def now(): return dt.datetime.now(dt.timezone.utc).isoformat()
 
 class ApiError(Exception):
@@ -117,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
         # Don't log passwords, cookies, bodies, or CSRF values.
         print(f'{self.client_address[0]} {self.command} {urllib.parse.urlsplit(self.path).path} {args[1] if len(args)>1 else ""}')
 
-    def send(self,value,status=200,cookie=None,content_type='application/json; charset=utf-8',extra=None):
+    def send(self,value,status=200,cookie=None,content_type='application/json; charset=utf-8',extra=None,style_nonce=None):
         data=value if isinstance(value,(bytes,bytearray)) else encode(value).encode() if content_type.startswith('application/json') else value
         self.send_response(status)
         self.send_header('Content-Type',content_type)
@@ -128,7 +134,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('X-Frame-Options','DENY' if not self.path.startswith('/sandbox') else 'SAMEORIGIN')
         policy="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'"
         if self.path.startswith('/sandbox'):
-            policy="default-src 'none'; script-src 'self' blob: https://cdn.jsdelivr.net/pyodide/v314.0.7/full/ 'wasm-unsafe-eval'; connect-src https://cdn.jsdelivr.net/pyodide/v314.0.7/full/; worker-src blob:; frame-ancestors 'self'; base-uri 'none'"
+            policy="default-src 'none'; script-src 'self' blob: https://cdn.jsdelivr.net/pyodide/v314.0.7/full/ 'wasm-unsafe-eval'; connect-src https://cdn.jsdelivr.net/pyodide/v314.0.7/full/; style-src 'self'; font-src 'self'; worker-src blob:; frame-ancestors 'self'; base-uri 'none'"
+        if style_nonce:
+            policy=policy.replace("style-src 'self'",f"style-src 'self' 'nonce-{style_nonce}'")
         self.send_header('Content-Security-Policy',policy)
         if cookie:self.send_header('Set-Cookie',cookie)
         for k,v in (extra or {}).items():self.send_header(k,v)
@@ -169,6 +177,34 @@ class Handler(BaseHTTPRequestHandler):
             require(urllib.parse.urlsplit(origin).netloc==self.headers.get('Host'),'來源不符',403)
         require(self.headers.get('Sec-Fetch-Site','same-origin') not in ('cross-site',),'不接受跨站寫入',403)
 
+    def local_demo_reset_enabled(self):
+        host=self.headers.get('Host','').split(':',1)[0].lower()
+        forwarded=('Forwarded','X-Forwarded-For','X-Forwarded-Host','X-Forwarded-Proto')
+        return (os.environ.get('ASSESSMENT_LOCAL_DEMO')=='1'
+                and os.environ.get('ASSESSMENT_PUBLIC_HTTPS')!='1'
+                and all(10<=len(os.environ.get(key,''))<=256 for key in DEMO_PASSWORD_KEYS.values())
+                and host in ('localhost','127.0.0.1') and self.client_address[0]=='127.0.0.1'
+                and not any(self.headers.get(header) for header in forwarded))
+
+    def reset_demo_password(self,body):
+        require(self.local_demo_reset_enabled(),'找不到 API',404)
+        email=valid_email(body.get('email',''))
+        require(email in DEMO_PASSWORD_KEYS,'請輸入測試帳號 teacher 或 student',400)
+        password=os.environ[DEMO_PASSWORD_KEYS[email]]
+        with db() as c:
+            c.execute('BEGIN IMMEDIATE')
+            registration=c.execute("SELECT value FROM app_meta WHERE key='local_demo_accounts'").fetchone()
+            accounts=decode(registration['value']) if registration else {}
+            user=c.execute('SELECT id FROM users WHERE id=? AND email=? AND disabled=0',
+                           (accounts.get(email),email)).fetchone()
+            require(user,'測試帳號尚未設定或已停用',404)
+            c.execute('UPDATE users SET password_hash=? WHERE id=?',(hash_password(password),user['id']))
+            c.execute('DELETE FROM sessions WHERE user_id=?',(user['id'],))
+            key=hashlib.sha256((email+'|'+self.client_address[0]).encode()).hexdigest()
+            c.execute('DELETE FROM login_limits WHERE key=?',(key,))
+            audit(c,'local-demo','demo_password_reset',user['id'])
+        return self.send({'email':email,'password':password})
+
     def learner_task(self,c,aid,u,create=False):
         learner=c.execute('SELECT id FROM learners WHERE user_id=?',(u['id'],)).fetchone()
         require(learner is not None,'此帳戶沒有組員身份',403)
@@ -204,7 +240,12 @@ class Handler(BaseHTTPRequestHandler):
             if not path.startswith('/api/'):
                 require(not write,'不支援的方法',405)
                 name=urllib.parse.unquote(path.lstrip('/')) or 'index.html'
-                require(name in {'index.html','app.js','guide.js','canvas.js','studio.js','rag.js','models.js','i18n.js','translations.js','sounds.js','app.css','retro.css','sandbox.html','sandbox.js','worker.mjs','favicon.svg'} or name.startswith(('vendor/pyodide/','vendor/98/','vendor/win98-sounds/')),'找不到頁面',404)
+                if name in ('index.html','writing','writing/','writing/index.html'):
+                    nonce=secrets.token_hex(24)
+                    page=(STATIC/'index.html').read_bytes().replace(b'__STYLE_NONCE__',nonce.encode())
+                    return self.send(page,content_type='text/html; charset=utf-8',style_nonce=nonce)
+                writing_assets={'writing/app.js','writing/app.css','writing/editor-deps.js','writing/workspace.html','writing/teacher.html','writing/teacher.js'}
+                require(name in {'index.html','app.js','guide.js','canvas.js','studio.js','rag.js','models.js','i18n.js','translations.js','sounds.js','app.css','retro.css','sandbox.html','sandbox.js','worker.mjs','favicon.svg'} or name in writing_assets or name.startswith(('vendor/pyodide/','vendor/98/','vendor/win98-sounds/')),'找不到頁面',404)
                 target=(STATIC/name).resolve()
                 require(target.is_relative_to(STATIC.resolve()) and target.is_file(),'找不到檔案',404)
                 ctype=mimetypes.guess_type(name)[0] or 'application/octet-stream'
@@ -212,10 +253,18 @@ class Handler(BaseHTTPRequestHandler):
             body=self.payload() if write else {}
             if write:self.origin()
             if path=='/api/health':return self.send({'status':'ok','version':analysis.VERSION})
+            if path.startswith('/api/writing/'):
+                user=self.identity()
+                if write:self.csrf(user)
+                return self.send(writing.routes(path,body,args,user,write))
             if path=='/api/session' and not write:
                 u=self.identity(optional=True)
-                with db() as c:setup=c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]==0
-                return self.send({'user':{k:u[k] for k in ['id','role','display_name','email','ui_locale','ui_sounds','ui_volume']} if u else None,'csrf':u['csrf'] if u else None,'setup_required':setup})
+                with db() as c:
+                    setup=c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]==0
+                    demo=self.local_demo_reset_enabled() and c.execute("SELECT 1 FROM app_meta WHERE key='local_demo_accounts'").fetchone() is not None
+                return self.send({'user':{k:u[k] for k in ['id','role','display_name','email','ui_locale','ui_sounds','ui_volume']} if u else None,'csrf':u['csrf'] if u else None,'setup_required':setup,'demo_reset':demo})
+            if path=='/api/demo/reset-password' and write:
+                return self.reset_demo_password(body)
             if path=='/api/setup' and write:
                 host=self.headers.get('Host','').split(':')[0]
                 require(host in ('127.0.0.1','localhost') and self.client_address[0] in ('127.0.0.1','::1'),'首次管理者設定僅限本機入口',403)
@@ -341,6 +390,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(404,'找不到 API')
         except ApiError as exc:self.send({'error':exc.message},exc.status)
         except collab.CollabError as exc:self.send({'error':exc.message},exc.status)
+        except writing.WritingError as exc:self.send({'error':exc.message},exc.status)
         except (model_slots.SlotError,exam_studio.ExamError,dense_rag.RagError) as exc:self.send({'error':str(exc)},400)
         except sqlite3.IntegrityError:self.send({'error':'資料已存在或關聯不合法'},409)
         except (KeyError,TypeError,ValueError):self.send({'error':'欄位不完整或格式錯誤'},400)
@@ -559,18 +609,36 @@ class Handler(BaseHTTPRequestHandler):
         raise ApiError(404,'找不到管理 API')
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--host',default='127.0.0.1');parser.add_argument('--port',type=int,default=8765);parser.add_argument('--no-worker',action='store_true');parser.add_argument('--no-grading',action='store_true');args=parser.parse_args()
-    initialize()
-    if not args.no_worker:
-        if not args.no_grading:threading.Thread(target=analysis.worker,daemon=True).start()
-        threading.Thread(target=collab.worker,daemon=True).start()
-        threading.Thread(target=exam_studio.worker,daemon=True).start()
-        threading.Thread(target=dense_rag.worker,daemon=True).start()
-        threading.Thread(target=model_library.worker,daemon=True).start()
-    http=ThreadingHTTPServer((args.host,args.port),Handler)
-    print(f'Local: http://{args.host}:{args.port}',flush=True)
-    try:http.serve_forever()
-    except KeyboardInterrupt:pass
-    finally:dense_rag.STOP.set();model_library.STOP.set();analysis.STOP.set();collab.STOP.set();exam_studio.STOP.set();http.server_close()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', default='127.0.0.1')
+    parser.add_argument('--also-host', action='append', default=[], help='Additional local IPv4 address to listen on')
+    parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--no-worker', action='store_true')
+    parser.add_argument('--no-grading', action='store_true')
+    args = parser.parse_args()
+    hosts = dict.fromkeys([args.host, *args.also_host])
+    workers = [collab, exam_studio, dense_rag, model_library, writing]
+    if not args.no_grading:
+        workers.insert(0, analysis)
+    with ExitStack() as stack:
+        servers = [stack.enter_context(ThreadingHTTPServer((host, args.port), Handler)) for host in hosts]
+        initialize()
+        if not args.no_worker:
+            for module in workers:
+                threading.Thread(target=module.worker, daemon=True).start()
+        for listener in servers[1:]:
+            thread = threading.Thread(target=listener.serve_forever, daemon=True)
+            thread.start()
+            stack.callback(listener.shutdown)
+        for listener in servers:
+            host, port = listener.server_address
+            print(f'Local: http://{host}:{port}', flush=True)
+        try:
+            servers[0].serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            for module in workers:
+                module.STOP.set()
 
 if __name__=='__main__':main()

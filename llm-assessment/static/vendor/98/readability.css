@@ -1,0 +1,43 @@
+/* Zixu uses the 98.css controls with the operating system's text fonts. */
+:root {
+  --zixu-ui-font: Tahoma, "PingFang TC", "Microsoft JhengHei", "Noto Sans CJK TC", system-ui, sans-serif;
+}
+
+body,
+.title-bar,
+.window,
+button,
+input,
+label,
+legend,
+li[role="tab"],
+option,
+select,
+table,
+textarea,
+ul.tree-view {
+  -webkit-font-smoothing: auto;
+  font-family: var(--zixu-ui-font);
+}
+
+.title-bar,
+.window,
+button,
+input,
+label,
+legend,
+li[role="tab"],
+option,
+select,
+table,
+textarea,
+ul.tree-view {
+  font-size: inherit;
+}
+
+button,
+input[type="reset"],
+input[type="submit"] {
+  color: #222;
+  text-shadow: none;
+}

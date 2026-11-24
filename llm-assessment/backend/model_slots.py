@@ -19,6 +19,9 @@ def selected(role,fallback=None):
     if not r:return fallback
     return {**(fallback or {}),**decode(r['config_json']),'profile_id':r['id'],'profile_name':r['name']}
 
+def writing_profile():
+    return selected('writing') or selected('generation')
+
 def endpoint(value):
     u=urllib.parse.urlsplit(value)
     check(u.scheme in ('http','https') and u.hostname in ('localhost','127.0.0.1','::1') and not u.username and not u.password and not u.query and not u.fragment,'目前僅接受本機 localhost／127.0.0.1 模型服務網址')
@@ -91,7 +94,7 @@ def routes(handler,path,b,u,write):
             profiles=[{**dict(r),'config':decode(r['config_json'])} for r in c.execute('SELECT * FROM model_profiles ORDER BY created_at')]
             roles={r['role']:r['profile_id'] for r in c.execute('SELECT * FROM model_roles')}
         import analysis,collab
-        return handler.send({'profiles':profiles,'roles':roles,'effective':{'generation':selected('generation'),'vision':collab.settings(),'grading':analysis.settings()},'legacy_roles':['vision','grading']})
+        return handler.send({'profiles':profiles,'roles':roles,'effective':{'generation':selected('generation'),'vision':collab.settings(),'grading':analysis.settings(),'writing':writing_profile()},'legacy_roles':['vision','grading']})
     if path=='/api/admin/model-slots' and write:
         name=b.get('name','').strip();check(1<=len(name)<=120,'請填模型來源名稱')
         provider=b.get('provider');check(provider in ('ollama','lmstudio','omni_local','openai_local'),'模型來源不支援')
@@ -103,7 +106,7 @@ def routes(handler,path,b,u,write):
         with db() as c:c.execute('INSERT INTO model_profiles VALUES(?,?,?,?)',(pid,name,encode(config),time.time()));audit(c,u['id'],'model_profile_created',pid)
         return handler.send({'id':pid,'status':'registered_not_activated'})
     if path=='/api/admin/model-slots/activate' and write:
-        role=b.get('role');check(role in ('generation','vision','grading'),'模型槽不存在')
+        role=b.get('role');check(role in ('generation','vision','grading','writing'),'模型槽不存在')
         with db() as c:r=c.execute('SELECT * FROM model_profiles WHERE id=?',(b.get('profile_id'),)).fetchone()
         check(r,'模型來源不存在');config=decode(r['config_json']);check(role!='vision' or config['vision'],'白板模型槽需要視覺能力')
         verify(config)

@@ -18,11 +18,85 @@ function openModal(title,html,actions=''){modal.innerHTML=`<div class="modal-hea
 function meters(){ $$('[data-percent]').forEach(e=>e.style.width=`${Math.max(0,Math.min(100,Number(e.dataset.percent)))}%`);$$('[data-height]').forEach(e=>e.style.height=`${Number(e.dataset.height)}px`);}
 function head(eyebrow,title,description,actions=''){return `<div class="page-head"><div><div class="eyebrow">${esc(eyebrow)}</div><h1 ${state.task||eyebrow==='REVIEW WORKSPACE'||(eyebrow==='MY FEEDBACK'&&title!=='理解的證據，下一步的方向。')?'data-no-i18n':''}>${esc(title)}</h1><p>${esc(description)}</p></div><div class="buttons">${actions}</div></div>`;}
 
-async function boot(){try{state.session=await api('/api/session');await i18n.syncUser(state.session.user);await retroAudio.syncUser(state.session.user);if(!state.session.user)return login();state.page=state.session.user.role==='admin'?'dashboard':'tasks';await navigate(state.page);}catch(e){$('#app').innerHTML=`<div class="loading">${esc(e.message)}</div>`;}}
-function login(){const setup=state.session.setup_required;$('#app').innerHTML=`<main class="login"><section class="login-story"><div class="brand"><img src="/favicon.svg" alt=""><div>知序<small>LLM ASSESSMENT STUDIO</small></div></div><div><div class="eyebrow">FROM UNDERSTANDING TO ACTION</div><h1>看懂原理。<br>讀懂案例。<br><em>提出下一步。</em></h1><p>從語言模型基礎到架構選擇，以作答證據檢視理解，再把想法轉化為可驗證的改善方案。</p><div class="login-tags"><span>概念問答</span><span>互動拼圖</span><span>程式實作</span></div></div><footer>ZJU-LLMs CHAPTER 01—02 · INDEPENDENT WORKSPACE</footer></section><section class="login-form"><form class="login-box" id="login-form"><div class="eyebrow">${setup?'INITIAL SETUP':'WELCOME BACK'}</div><h2>${setup?'建立管理者帳戶':'登入你的工作區'}</h2><p>${setup?'先在這台主機設定帳戶，再邀請組員加入。':'使用管理者提供的帳號，繼續你的評量。'}</p>${setup?field('name','管理者姓名',input('name','text','', 'required autocomplete="name"')):''}${field('email','帳號',input('email','text','', 'required autocomplete="username"'))}${field('password','密碼',input('password','password','',`required minlength="10" autocomplete="${setup?'new-password':'current-password'}"`),setup?'至少 10 個字元。':'')}<div class="form-error" id="login-error"></div><button class="btn primary" type="submit">${setup?'建立工作區':'登入工作區'} <span>→</span></button><p class="tiny muted">帳戶及評量資料儲存於主機後端。</p></form></section></main>`;bind('#login-form','submit',async e=>{e.preventDefault();const btn=$('#login-form button');btn.disabled=true;try{const values={email:$('#email').value,password:$('#password').value};if(setup){await api('/api/setup',{...values,name:$('#name').value});}await api('/api/login',values);await boot();}catch(x){$('#login-error').textContent=x.message;retroAudio.play('error');}finally{btn.disabled=false;}});}
-function shell(content){const u=state.session.user,admin=u.role==='admin';const nav=admin?[['dashboard','◈','工作區總覽'],['questions','▦','題庫與覆核'],['examstudio','▣','教材出題工作室'],['modelslots','▧','模型轉接槽'],['assignments','▤','組卷與分配'],['learners','◎','組員管理'],['submissions','◷','作答與批改'],['overview','↗','能力與支持'],['settings','⚙','系統設定']]:[['tasks','▤','我的評量'],['reports','↗','我的報告'],['settings','⚙','帳戶設定']];$('#app').innerHTML=`<div class="layout"><aside class="sidebar"><div class="brand"><img src="/favicon.svg" alt=""><div>知序<small>ASSESSMENT STUDIO</small></div></div><div class="nav-heading">${admin?'MANAGEMENT':'MY WORKSPACE'}</div><nav class="nav">${nav.map(([id,icon,text])=>`<button data-nav="${id}" class="${state.page===id?'active':''}"><span class="nav-icon">${icon}</span>${text}</button>`).join('')}</nav><div class="side-footer"><div class="profile"><span class="avatar">${esc(u.display_name[0])}</span><div><div class="tiny">${esc(u.display_name)}</div><small>${admin?'管理者':'組員'}</small></div></div><button class="quiet" id="logout">登出工作區 →</button></div></aside><main class="main"><div class="topbar"><span>WORKSPACE / ${admin?'管理者':'組員'}</span><span class="pill"><span class="status-dot"></span>CH 01 · CH 02</span><button class="quiet mobile-menu" id="mobile-logout">登出</button></div><div id="content">${content}</div></main></div>`;$$('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));bind('#logout','click',logout);bind('#mobile-logout','click',logout);meters();}
+async function boot(){try{unmountWriting();state.session=await api('/api/session');await i18n.syncUser(state.session.user);await retroAudio.syncUser(state.session.user);if(!state.session.user)return login();state.page=isWritingPath()?'writing':state.session.user.role==='admin'?'dashboard':'tasks';await navigate(state.page);}catch(e){$('#app').innerHTML=`<div class="loading">${esc(e.message)}</div>`;}}
+function login(){const setup=state.session.setup_required;$('#app').innerHTML=`<main class="login"><section class="login-story"><div class="brand"><img src="/favicon.svg" alt=""><div>知序<small>LLM ASSESSMENT STUDIO</small></div></div><div><div class="eyebrow">FROM UNDERSTANDING TO ACTION</div><h1>看懂原理。<br>讀懂案例。<br><em>提出下一步。</em></h1><p>從語言模型基礎到架構選擇，以作答證據檢視理解，再把想法轉化為可驗證的改善方案。</p><div class="login-tags"><span>概念問答</span><span>互動拼圖</span><span>程式實作</span></div></div><footer>ZJU-LLMs CHAPTER 01—02 · INDEPENDENT WORKSPACE</footer></section><section class="login-form"><form class="login-box" id="login-form"><div class="eyebrow">${setup?'INITIAL SETUP':'WELCOME BACK'}</div><h2>${setup?'建立管理者帳戶':'登入你的工作區'}</h2><p>${setup?'先在這台主機設定帳戶，再邀請組員加入。':'使用管理者提供的帳號，繼續你的評量。'}</p>${setup?field('name','管理者姓名',input('name','text','', 'required autocomplete="name"')):''}${field('email','帳號',input('email','text','', 'required autocomplete="username"'))}${field('password','密碼',input('password','password','',`required ${setup?'minlength="10" ':''}autocomplete="${setup?'new-password':'current-password'}"`),setup?'至少 10 個字元。':'')}<div class="form-error" id="login-error"></div><button class="btn primary" type="submit">${setup?'建立工作區':'登入工作區'} <span>→</span></button>${!setup&&state.session.demo_reset?'<p><button type="button" class="btn" id="forgot-demo-password">忘記密碼</button></p><p id="demo-reset-status" role="status"></p>':''}<p class="tiny muted">帳戶及評量資料儲存於主機後端。</p></form></section></main>`;bind('#login-form','submit',async e=>{e.preventDefault();const btn=$('#login-form button');btn.disabled=true;try{const values={email:$('#email').value,password:$('#password').value};if(setup){await api('/api/setup',{...values,name:$('#name').value});}await api('/api/login',values);await boot();}catch(x){$('#login-error').textContent=x.message;retroAudio.play('error');}finally{btn.disabled=false;}});
+ const resetButton=$('#forgot-demo-password');
+ if(resetButton)resetButton.addEventListener('click',busy(resetButton,async()=>{
+  const email=$('#email').value.trim().toLowerCase();
+  const status=$('#demo-reset-status');
+  if(!['teacher','student'].includes(email)){
+   status.textContent='請先輸入測試帳號 teacher 或 student。';
+   $('#email').focus();
+   return;
+  }
+  const reset=await api('/api/demo/reset-password',{email});
+  $('#email').value=reset.email;
+  $('#password').value=reset.password;
+  $('#login-error').textContent='';
+  status.textContent='已恢復預設密碼並填入，可以直接登入。';
+  $('#login-form button[type="submit"]').focus();
+ }));
+}
+function shell(content){const u=state.session.user,admin=u.role==='admin';const displayedPage=state.page==='writing'?(admin?'寫作出題':'創意寫作 IDE'):'CH 01 · CH 02';
+ const layout=$('#app > .layout');
+ if(layout){
+  layout.classList.toggle('layout-writing',state.page==='writing');
+  $('#workspace-page-label').textContent=displayedPage;
+  for(const button of layout.querySelectorAll('[data-nav]')){
+   const active=button.dataset.nav===state.page;
+   button.classList.toggle('active',active);
+   if(active)button.setAttribute('aria-current','page');
+   else button.removeAttribute('aria-current');
+  }
+  $('#content').innerHTML=content;
+  meters();
+  return;
+ }
+ const nav=admin?[['dashboard','◈','工作區總覽'],['writing','✎','寫作出題'],['questions','▦','題庫與覆核'],['examstudio','▣','教材出題工作室'],['modelslots','▧','模型轉接槽'],['assignments','▤','組卷與分配'],['learners','◎','組員管理'],['submissions','◷','作答與批改'],['overview','↗','能力與支持'],['settings','⚙','系統設定']]:[['tasks','▤','我的評量'],['writing','✎','創意寫作 IDE'],['reports','↗','我的報告'],['settings','⚙','帳戶設定']];$('#app').innerHTML=`<div class="layout ${state.page==='writing'?'layout-writing':''}"><aside class="sidebar"><div class="brand"><img src="/favicon.svg" alt=""><div>知序<small>ASSESSMENT STUDIO</small></div></div><div class="nav-heading">${admin?'MANAGEMENT':'MY WORKSPACE'}</div><nav class="nav">${nav.map(([id,icon,text])=>`<button data-nav="${id}" class="${state.page===id?'active':''}" ${state.page===id?'aria-current="page"':''}><span class="nav-icon">${icon}</span>${text}</button>`).join('')}</nav><div class="side-footer"><div class="profile"><span class="avatar">${esc(u.display_name[0])}</span><div><div class="tiny">${esc(u.display_name)}</div><small>${admin?'管理者':'組員'}</small></div></div><button class="quiet" id="logout">登出工作區 →</button></div></aside><main class="main"><div class="topbar"><span>WORKSPACE / ${admin?'管理者':'組員'}</span><span class="pill"><span class="status-dot"></span><span id="workspace-page-label">${displayedPage}</span></span><button class="quiet mobile-menu" id="mobile-logout">登出</button></div><div id="content">${content}</div></main></div>`;$$('[data-nav]').forEach(b=>b.onclick=()=>{if(state.page!=='writing'||b.dataset.nav!=='writing')navigate(b.dataset.nav);});bind('#logout','click',logout);bind('#mobile-logout','click',logout);meters();}
 async function logout(){try{if(state.task)await saveCurrent();await api('/api/logout',{});state.task=null;state.session=null;await boot();}catch(e){toast(e.message);}}
-async function navigate(page){const navigation=++state.navigation;try{if(state.task){await saveCurrent();if(navigation!==state.navigation)return;state.task=null;}state.page=page;shell('<div class="loading">正在載入工作區…</div>');const routes={examstudio:examStudio,modelslots:modelSlots,dashboard:dashboard,questions:questions,assignments:assignments,learners:learners,submissions:submissions,overview:overview,tasks:tasks,reports:reports,settings:settings};await routes[page]();}catch(e){if(e.name==='AbortError'||navigation!==state.navigation)return;const target=$('#content');if(target)target.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}}
+const isWritingPath=()=>/^\/writing(?:\/|\/index\.html)?$/.test(location.pathname);
+let disposeWriting=null;
+let lastWritingUrl='/writing';
+function unmountWriting(){
+ if(!disposeWriting)return;
+ lastWritingUrl=location.pathname+location.search;
+ disposeWriting();
+ disposeWriting=null;
+}
+async function writingWorkspace(navigation){
+ const teacher=state.session.user.role==='admin';
+ const [module,response]=await Promise.all(teacher
+  ? [import('/writing/teacher.js'),fetch('/writing/teacher.html')]
+  : [import('/writing/app.js'),fetch('/writing/workspace.html')]);
+ if(!response.ok)throw Error('無法載入寫作工作區');
+ const markup=await response.text();
+ if(navigation!==state.navigation)return;
+ const root=document.createElement('section');
+ root.className='writing-view';
+ root.setAttribute('aria-label',teacher?'寫作出題':'創意寫作 IDE');
+ root.setAttribute('data-no-i18n','');
+ root.innerHTML=markup;
+ $('#content').replaceChildren(root);
+ const styleNonce=document.querySelector('meta[name="editor-nonce"]').content;
+ disposeWriting=teacher?module.mountTeacher(root,{api}):module.mountWriting(root,{session:state.session,styleNonce});
+}
+async function navigate(page){
+ const navigation=++state.navigation;
+ try{
+  if(state.task){await saveCurrent();if(navigation!==state.navigation)return;state.task=null;}
+  unmountWriting();
+  if(page==='writing'&&!isWritingPath())history.replaceState(null,'',lastWritingUrl);
+  if(page!=='writing'&&isWritingPath())history.replaceState(null,'','/');
+  state.page=page;
+  shell('<div class="loading">正在載入工作區…</div>');
+  const routes={writing:()=>writingWorkspace(navigation),examstudio:examStudio,modelslots:modelSlots,dashboard:dashboard,questions:questions,assignments:assignments,learners:learners,submissions:submissions,overview:overview,tasks:tasks,reports:reports,settings:settings};
+  await routes[page]();
+ }catch(e){
+  if(e.name==='AbortError'||navigation!==state.navigation)return;
+  const target=$('#content');
+  if(target)target.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;
+ }
+}
 function content(html){$('#content').innerHTML=html;meters();}
 async function dashboard(){const d=await api('/api/admin/dashboard');content(head('YOUR ASSESSMENT WORKSPACE','理解，才是起點。','把題目、作答與下一步改善放在同一條可追溯的評量流程。','<button class="btn primary" id="new-assignment">＋ 建立評量</button>')+`<section class="hero"><div><div class="eyebrow">EVIDENCE → INSIGHT → NEXT STEP</div><h2>從「會回答」<br>走到「知道怎麼改善」。</h2><p>概念與實作一起檢測，AI 按規準提出分數與證據；你可以進一步檢視、調整與發布。</p></div><div class="hero-art" aria-hidden="true">${'<i></i>'.repeat(9)}</div></section><div class="stats">${[['題庫題目',d.counts.questions,'涵蓋概念、互動與實作'],['已核准版本',d.counts.approved,'可加入正式評量'],['組員',d.counts.learners,'獨立帳戶與作答紀錄'],['已繳交',d.counts.submissions,`${d.counts.pending} 份等待或正在分析`]].map(([t,n,s])=>`<div class="stat"><label>${t}</label><strong>${n}</strong><small>${s}</small></div>`).join('')}</div><div class="columns"><section class="panel"><div class="panel-head"><h2>最近的分析</h2><button class="quiet" id="to-submissions">查看全部 →</button></div>${d.jobs.length?`<div class="table-wrap"><table><thead><tr><th>評量 / 組員</th><th>狀態</th><th>建立時間</th></tr></thead><tbody>${d.jobs.map(j=>`<tr><td><strong>${esc(j.title)}</strong><br><small>${esc(j.display_name)}</small></td><td>${badge(j.status)}</td><td class="tiny muted">${fmt(j.created_at*1000)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無作答分析。<br>核准題目並分配評量後，繳交內容會出現在這裡。</div>'}</section><section class="panel"><div class="panel-head"><h2>準備你的第一次評量</h2></div><div class="list-row"><div><h3>01 · 題目覆核</h3><p>查看來源、答案與分項規準。</p></div><button class="btn small" id="to-bank">查看</button></div><div class="list-row"><div><h3>02 · 建立組員</h3><p>提供每人獨立登入帳戶。</p></div><button class="btn small" id="to-learners">新增</button></div><div class="list-row"><div><h3>03 · 啟用批改</h3><p>AI ${d.model_ready&&d.ai.enabled?'可用':'指定模型尚未就緒'}（${esc(d.ai.model)}） · 隔離測試 ${d.runner.available?'可用':'尚未就緒'}</p></div><button class="btn small" id="to-settings">設定</button></div></section></div>`);bind('#new-assignment','click',()=>navigate('assignments'));bind('#to-submissions','click',()=>navigate('submissions'));bind('#to-bank','click',()=>navigate('questions'));bind('#to-learners','click',()=>navigate('learners'));bind('#to-settings','click',()=>navigate('settings'));}
 

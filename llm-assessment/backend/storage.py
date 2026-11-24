@@ -67,6 +67,8 @@ def initialize():
         initialize_rag(c)
         from model_library import initialize as initialize_model_library
         initialize_model_library(c)
+        from writing import initialize as initialize_writing
+        initialize_writing(c)
 
 def audit(c, actor, event, entity, detail=None):
     c.execute('INSERT INTO audit_events(id,actor_id,event,entity,detail_json) VALUES(?,?,?,?,?)',(uid(),actor,event,entity,encode(detail or {})))
