@@ -88,12 +88,26 @@ class WritingStudio(unittest.TestCase):
         room_id = self.owner.call(assign + "?room=" + assignment)["students"][0]["room_id"]
         path = "/api/writing/rooms/" + room_id
         chapter = self.editor.call(path)["docs"][0]["id"]
+        inbox = "/api/admin/submissions"
+
+        def inbox_row():
+            return next(row for row in self.owner.call(inbox)["writing"] if row["room_id"] == room_id)
+
+        self.editor.call(inbox, expected=403)
+        self.assertEqual(inbox_row()["status"], "assigned")
         self.editor.call(path + "/submit", {"doc": chapter, "version": 0}, expected=400)
         document = Doc()
         text = document.get("body", type=Text)
         text += "雨水把路燈的光拖成一條線。"
         sync = self.editor.call(path + "/sync", {"doc": chapter, "update": base64.b64encode(document.get_update()).decode()})
+        draft_row = inbox_row()
+        self.assertEqual(draft_row["status"], "draft")
+        self.assertIsNone(draft_row["submission_id"])
         sent = self.editor.call(path + "/submit", {"doc": chapter, "version": sync["version"]})["submission"]
+        submitted_row = inbox_row()
+        self.assertEqual(submitted_row["status"], "submitted")
+        self.assertEqual(submitted_row["assignment_id"], assignment)
+        self.assertEqual(submitted_row["submission_id"], sent["id"])
         self.assertEqual(self.editor.call(path + "/submit", {"doc": chapter, "version": sync["version"]})["submission"]["id"], sent["id"])
         self.editor.call(path + "/sync", {"doc": chapter, "update": base64.b64encode(document.get_update()).decode()}, expected=409)
 
@@ -107,12 +121,17 @@ class WritingStudio(unittest.TestCase):
         self.assertIsNone(self.editor.call(path)["submission"]["score"])
         self.owner.call(review, {"id": sent["id"], "score": 83, "feedback": "可以用一句話收束觀察。"})
         self.assertEqual(self.editor.call(path)["submission"]["score"], 83)
+        reviewed_row = inbox_row()
+        self.assertEqual((reviewed_row["status"], reviewed_row["score"]), ("reviewed", 83))
         self.owner.call(review, {"id": sent["id"], "action": "reopen"})
+        self.assertEqual(inbox_row()["status"], "revision")
         self.assertIsNotNone(self.editor.call(path)["submission"]["reopened_at"])
         text += " 我沿著光走回家。"
         sync = self.editor.call(path + "/sync", {"doc": chapter, "update": base64.b64encode(document.get_update()).decode()})
         revised = self.editor.call(path + "/submit", {"doc": chapter, "version": sync["version"]})["submission"]
         self.assertEqual(revised["revision"], 2)
+        revised_row = inbox_row()
+        self.assertEqual((revised_row["status"], revised_row["submission_id"]), ("submitted", revised["id"]))
         self.assertEqual(self.owner.call(review + "?id=" + sent["id"])["submission"]["snapshot"], record["snapshot"])
 
     def test_permissions_simultaneous_edits_and_version_restore(self):

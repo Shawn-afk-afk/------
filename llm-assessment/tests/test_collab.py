@@ -69,7 +69,7 @@ class CanvasWorkflow(unittest.TestCase):
 
 class FeedbackValidation(unittest.TestCase):
     def test_grading_rejects_evidence_from_another_phase(self):
-        q={'kind':'ai_collab_canvas','prompt':'test','answer':{'expected_elements':[]},'rubric':{'criteria':[{'id':'revision'}]}}
+        q={'kind':'ai_collab_canvas','prompt':'test','answer':{'expected_elements':[]},'rubric':{'criteria':[{'id':'revision','max_level':3}]}}
         response={'text':'我核對後修改了箭頭','canvas':{'initial_text':'這只是初稿'}}
         class Response:
             def __enter__(self):return self

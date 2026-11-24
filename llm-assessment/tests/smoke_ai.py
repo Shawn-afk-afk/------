@@ -2,9 +2,9 @@
 import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
-import storage,analysis
+import storage,analysis,model_slots
 config=analysis.settings()
-if config['model']!='gpt-oss:20b':raise SystemExit('測試要求使用 gpt-oss:20b。')
+if config['model']!=model_slots.DEFAULT_MODEL:raise SystemExit(f'測試要求使用 {model_slots.DEFAULT_MODEL}。')
 def question(title):
     with storage.db() as c:
         return storage.question(c.execute('SELECT v.*,q.skill_id FROM question_versions v JOIN questions q ON q.id=v.question_id WHERE v.title=? ORDER BY v.version DESC LIMIT 1',(title,)).fetchone(),True)

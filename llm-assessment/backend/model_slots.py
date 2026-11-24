@@ -3,14 +3,16 @@ import os,json,time,urllib.request,urllib.parse,urllib.error,re
 from storage import db,uid,encode,decode,audit
 
 DEFAULT_URL=os.environ.get('ASSESSMENT_OLLAMA_URL','http://127.0.0.1:11434').rstrip('/')
+DEFAULT_MODEL='gemma4:12b-mxfp8'
+
 class SlotError(ValueError):pass
 def check(ok,message):
     if not ok:raise SlotError(message)
 def initialize(c):
     c.executescript('''CREATE TABLE IF NOT EXISTS model_profiles(id TEXT PRIMARY KEY,name TEXT NOT NULL,config_json TEXT NOT NULL,created_at REAL NOT NULL);
     CREATE TABLE IF NOT EXISTS model_roles(role TEXT PRIMARY KEY,profile_id TEXT NOT NULL REFERENCES model_profiles(id));''')
-    for pid,name,model,vision in [('gemma-12b','Gemma 4 12B · 原始模型','gemma4:12b-it-q4_K_M',True),('gpt-oss-20b','GPT OSS 20B · 推理批改','gpt-oss:20b',False)]:
-        c.execute('INSERT OR IGNORE INTO model_profiles VALUES(?,?,?,?)',(pid,name,encode({'provider':'ollama','endpoint':DEFAULT_URL,'model':model,'vision':vision,'source_kind':'base','base_model':model,'adapter_note':'','reasoning':'medium'}),time.time()))
+    config={'provider':'ollama','endpoint':DEFAULT_URL,'model':DEFAULT_MODEL,'vision':True,'source_kind':'base','base_model':DEFAULT_MODEL,'adapter_note':'','reasoning':'medium'}
+    c.execute('INSERT OR IGNORE INTO model_profiles VALUES(?,?,?,?)',('gemma-12b','Gemma 4 12B · 原始模型',encode(config),time.time()))
     # Existing teacher choices remain effective until explicitly bound to a slot.
     c.execute("INSERT OR IGNORE INTO model_roles VALUES('generation','gemma-12b')")
 

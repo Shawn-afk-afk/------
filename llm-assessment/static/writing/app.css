@@ -214,3 +214,16 @@
 .writing-view #review-snapshot { max-height: 45vh; overflow: auto; }
 .writing-view #review-form > label { display: block; margin-block: .55rem; }
 .writing-view #review-score:empty { display: none; }
+
+.writing-view .submission-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding: .35rem .5rem;
+  background: #f2f4fc;
+  border-bottom: 1px solid var(--writing-shadow);
+  color: var(--selection);
+  font-size: .9rem;
+}

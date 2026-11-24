@@ -456,8 +456,12 @@ export function mountWriting(root, { session, styleNonce }) {
       clearGhost(ctx.editor);
     }
     const room = ctx.room;
-    $("submit-writing").hidden = !room.can_submit || locked;
-    $("submit-writing").textContent = submission ? "重新繳交" : "繳交作業";
+    $("submission-bar").hidden = !room.can_submit;
+    $("submit-writing").disabled = locked;
+    $("submit-writing").textContent = locked ? "已繳交" : submission ? "重新繳交" : "繳交作業";
+    $("submission-progress").textContent = locked
+      ? (submission.reviewed_at ? "已批改，可查看回饋" : "作業已送到老師的批改清單")
+      : submission ? "老師已開放修訂，完成後請重新繳交" : "尚未繳交 · 寫完後請按繳交作業";
     $("show-feedback").hidden = !room.can_submit;
     $("snapshot").disabled = locked;
     $("new-chapter").hidden = locked || room.mode === "paragraph";

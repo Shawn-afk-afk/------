@@ -327,8 +327,12 @@ export function mountTeacher(root, { api }) {
       : "目前沒有教材。可先到教材出題工作室匯入。";
     renderAssignments();
     renderStudents();
-    const room = new URLSearchParams(location.search).get("room");
-    if (assignments.some(assignment => assignment.id === room)) await openAssignment(room);
+    const params = new URLSearchParams(location.search);
+    const room = params.get("room");
+    if (assignments.some(assignment => assignment.id === room)) {
+      await openAssignment(room);
+      if (!disposed && params.get("review")) await openReview(params.get("review"));
+    }
   }
 
   boot().catch(error => { if (!disposed) report(error.message); });

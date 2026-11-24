@@ -518,7 +518,8 @@ class Handler(BaseHTTPRequestHandler):
                     manual=c.execute('SELECT result_json FROM manual_adjustments WHERE submission_id=? AND attempt_id=(SELECT id FROM attempts WHERE submission_id=? ORDER BY rowid DESC LIMIT 1) ORDER BY revision DESC LIMIT 1',(r['id'],r['id'])).fetchone()
                     if manual:item['result']=decode(manual['result_json'])
                     item['published']=bool(c.execute('SELECT 1 FROM published_reports WHERE submission_id=?',(r['id'],)).fetchone());rows.append(item)
-            return self.send({'submissions':rows})
+                writing_rows=writing.grading_inbox(c,u['id'])
+            return self.send({'submissions':rows,'writing':writing_rows})
         m=re.fullmatch(r'/api/admin/submissions/([^/]+)(?:/(review|retry|reopen))?',path)
         if m:
             sid,action=m.groups()

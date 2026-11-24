@@ -27,7 +27,7 @@ def initialize(c):
 
 def settings():
     with db() as c:row=c.execute("SELECT value FROM app_meta WHERE key='collab_settings'").fetchone()
-    legacy=decode(row['value']) if row else {'model':'gemma4:12b-it-q4_K_M','enabled':True}
+    legacy=decode(row['value']) if row else {'model':model_slots.DEFAULT_MODEL,'enabled':True}
     return model_slots.selected('vision',legacy)
 
 def validate_scene(scene):

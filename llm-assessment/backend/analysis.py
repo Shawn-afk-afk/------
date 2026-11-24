@@ -25,7 +25,7 @@ def models():
 def settings():
     with db() as c:
         row=c.execute("SELECT value FROM app_meta WHERE key='ai_settings'").fetchone()
-    legacy=decode(row['value']) if row else {'model':'gpt-oss:20b','enabled':True,'reasoning':'medium'}
+    legacy=decode(row['value']) if row else {'model':model_slots.DEFAULT_MODEL,'enabled':True,'reasoning':'medium'}
     return model_slots.selected('grading',legacy)
 
 def objective(q,response):

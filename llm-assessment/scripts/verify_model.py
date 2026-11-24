@@ -8,18 +8,21 @@ import urllib.request
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'backend'))
+from model_slots import DEFAULT_MODEL,DEFAULT_URL
+
 parser=argparse.ArgumentParser()
 parser.add_argument('--wait-seconds',type=int,default=0)
 args=parser.parse_args()
 deadline=time.monotonic()+max(0,args.wait_seconds)
 while True:
     try:
-        with urllib.request.urlopen('http://127.0.0.1:11434/api/tags',timeout=5) as response:
-            ready=any(item['name']=='gpt-oss:20b' for item in json.load(response).get('models',[]))
+        with urllib.request.urlopen(DEFAULT_URL+'/api/tags',timeout=5) as response:
+            ready=any(item['name']==DEFAULT_MODEL for item in json.load(response).get('models',[]))
     except Exception:
         ready=False
     if ready:break
-    if time.monotonic()>=deadline:raise SystemExit('gpt-oss:20b 尚未下載完成，尚未驗證推論。')
+    if time.monotonic()>=deadline:raise SystemExit(f'{DEFAULT_MODEL} 尚未下載完成，尚未驗證推論。')
     time.sleep(30)
 print('模型已就緒；開始實際批改測試。',flush=True)
 check=subprocess.run([sys.executable,str(ROOT/'tests/smoke_ai.py')],cwd=ROOT,timeout=1000)

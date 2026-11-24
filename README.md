@@ -7,7 +7,7 @@
 
 本儲存庫新增 [llm-assessment](llm-assessment/README.md) 獨立整合版，保留原本 ExamCrafter 主程式。整合版包含 ZJU 第一／二章題庫、教師審題與詳解、選擇與互動題、WSL2 Python實作、AI批改與人工覆核、iPad圖文白板、教材出題、98.css介面與中英日西語切換。
 
-模型磁碟庫可從 Ollama Library 或 Hugging Face 公開 GGUF 查詢／下載到主機，接入本機 Ollama／LM Studio。可分塊上傳自己的權重並驗證；包含 OmniEdu Gemma 4 E4B-it LoRA 的原生 localhost 接入腳本。預設教材出題為 Gemma 4 12B，推理批改為 GPT OSS20B；OmniEdu 是可核對與切換的獨立來源。沒有雲端推論、付費 API或訂閱動作。
+模型磁碟庫可從 Ollama Library 或 Hugging Face 公開 GGUF 查詢／下載到主機，接入本機 Ollama／LM Studio。可分塊上傳自己的權重並驗證；包含 OmniEdu Gemma 4 E4B-it LoRA 的原生 localhost 接入腳本。預設教材出題、寫作、AI 批改及白板辨識均使用 Gemma 4 12B；OmniEdu 是可核對與切換的獨立來源。沒有雲端推論、付費 API或訂閱動作。
 
 教材工作室依序為「教材輸入 → 組成考卷 → 審題匯出」。新增本機EmbeddingGemma Dense RAG，原文儲存後自動切段、建立SQLite向量索引；出題依選取教材做cosine檢索，保留PDF頁碼與原文快照。
 

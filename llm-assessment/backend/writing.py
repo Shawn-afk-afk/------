@@ -286,6 +286,36 @@ def latest_submission(c, room_id):
     """, (room_id,)).fetchone()
 
 
+def grading_inbox(c, teacher_id):
+    """One row per assigned workspace, including drafts awaiting student submission."""
+    rows = c.execute("""
+        SELECT r.id AS room_id,COALESCE(r.assignment_id,r.id) AS assignment_id,r.title,
+            members.names AS display_name,s.id AS submission_id,s.revision,s.score,
+            CASE WHEN s.reopened_at IS NOT NULL THEN 'revision'
+                 WHEN s.reviewed_at IS NOT NULL THEN 'reviewed'
+                 WHEN s.id IS NOT NULL THEN 'submitted'
+                 WHEN EXISTS(SELECT 1 FROM writing_docs d WHERE d.room_id=r.id
+                             AND length(trim(d.body))>0) THEN 'draft'
+                 ELSE 'assigned' END AS status
+        FROM writing_rooms r
+        JOIN (
+            SELECT m.room_id,group_concat(u.display_name,'、') AS names
+            FROM writing_members m JOIN users u ON u.id=m.user_id
+            JOIN writing_rooms owned ON owned.id=m.room_id
+            WHERE owned.owner_id=? AND u.role='learner' AND u.id!=owned.owner_id
+            GROUP BY m.room_id
+        ) members ON members.room_id=r.id
+        LEFT JOIN writing_submissions s ON s.room_id=r.id AND s.revision=(
+            SELECT max(revision) FROM writing_submissions WHERE room_id=r.id
+        )
+        WHERE r.owner_id=?
+        ORDER BY CASE WHEN s.id IS NOT NULL AND s.reviewed_at IS NULL AND s.reopened_at IS NULL THEN 0
+                      WHEN s.reopened_at IS NOT NULL OR s.id IS NULL THEN 1 ELSE 2 END,
+                 s.submitted_at DESC,r.rowid DESC
+    """, (teacher_id, teacher_id))
+    return [dict(row) for row in rows]
+
+
 def require_editable(c, room_id):
     submission = latest_submission(c, room_id)
     require(not submission or submission["reopened_at"] is not None,

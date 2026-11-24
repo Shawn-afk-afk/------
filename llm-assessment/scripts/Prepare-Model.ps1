@@ -18,21 +18,21 @@ catch{
     }
     if(!$models){throw 'Ollama 尚未啟動，請檢查 .runtime/ollama.stderr.log。'}
 }
-if(!($models.models.name -contains 'gpt-oss:20b')){
-    $pullPidFile=Join-Path $runtimeDir 'gpt-oss-pull.pid'
+if(!($models.models.name -contains 'gemma4:12b-mxfp8')){
+    $pullPidFile=Join-Path $runtimeDir 'gemma-12b-pull.pid'
     $pullRunning=$false
     if(Test-Path -LiteralPath $pullPidFile){
         $pullId=[int](Get-Content -LiteralPath $pullPidFile)
         $pullProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$pullId" -ErrorAction SilentlyContinue
-        $pullRunning=$pullProcess -and $pullProcess.CommandLine -like '*ollama*pull*gpt-oss:20b*'
+        $pullRunning=$pullProcess -and $pullProcess.CommandLine -like '*ollama*pull*gemma4:12b-mxfp8*'
     }
     if(!$pullRunning){
-        $pullProcess=Start-Process -FilePath $OllamaPath -ArgumentList @('pull','gpt-oss:20b') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeDir 'gpt-oss-pull.stdout.log') -RedirectStandardError (Join-Path $runtimeDir 'gpt-oss-pull.stderr.log')
+        $pullProcess=Start-Process -FilePath $OllamaPath -ArgumentList @('pull','gemma4:12b-mxfp8') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeDir 'gemma-12b-pull.stdout.log') -RedirectStandardError (Join-Path $runtimeDir 'gemma-12b-pull.stderr.log')
         $pullProcess.Id | Set-Content -LiteralPath $pullPidFile
     }
-    Write-Output 'gpt-oss:20b 在背景下載，可繼續測試網站。下載進度：.runtime/gpt-oss-pull.stderr.log'
-}else{Write-Output 'gpt-oss:20b 已下載。'}
-$verifyPidFile=Join-Path $runtimeDir 'gpt-oss-verification.pid'
+    Write-Output 'gemma4:12b-mxfp8 在背景下載，可繼續測試網站。下載進度：.runtime/gemma-12b-pull.stderr.log'
+}else{Write-Output 'gemma4:12b-mxfp8 已下載。'}
+$verifyPidFile=Join-Path $runtimeDir 'gemma-12b-verification.pid'
 $verifyRunning=$false
 if(Test-Path -LiteralPath $verifyPidFile){
     $verifyId=[int](Get-Content -LiteralPath $verifyPidFile)
@@ -43,7 +43,7 @@ if(!$verifyRunning){
     $pythonPath=Join-Path $env:USERPROFILE '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
     if(!(Test-Path -LiteralPath $pythonPath)){$pythonPath=(Get-Command python).Source}
     $verifyFile=Join-Path $PSScriptRoot 'verify_model.py'
-    $verifyProcess=Start-Process -FilePath $pythonPath -ArgumentList @('-u',('"'+$verifyFile+'"'),'--wait-seconds','14400') -WorkingDirectory $projectDir -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeDir 'gpt-oss-verification.stdout.log') -RedirectStandardError (Join-Path $runtimeDir 'gpt-oss-verification.stderr.log')
+    $verifyProcess=Start-Process -FilePath $pythonPath -ArgumentList @('-u',('"'+$verifyFile+'"'),'--wait-seconds','14400') -WorkingDirectory $projectDir -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeDir 'gemma-12b-verification.stdout.log') -RedirectStandardError (Join-Path $runtimeDir 'gemma-12b-verification.stderr.log')
     $verifyProcess.Id | Set-Content -LiteralPath $verifyPidFile
 }
-Write-Output '下載完成後會執行一次實際批改驗證；結果：.runtime/gpt-oss-verification.stdout.log，錯誤：.runtime/gpt-oss-verification.stderr.log。'
+Write-Output '下載完成後會執行一次實際批改驗證；結果：.runtime/gemma-12b-verification.stdout.log，錯誤：.runtime/gemma-12b-verification.stderr.log。'

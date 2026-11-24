@@ -28,7 +28,7 @@ class StudioWorkflow(unittest.TestCase):
         request={'metadata':{'title':'測試考卷','subject':'LLM'},'unit_ids':['book-2.3'],'sections_config':[{'section_title':'概念','section_type':'CHOICE','question_count':1,'score_per_question':6}]}
         jid=admin.call('/api/admin/exam/generate',request)['id']
         with storage.db() as c:job=dict(c.execute('SELECT * FROM exam_jobs WHERE id=?',(jid,)).fetchone())
-        snapshot=storage.decode(job['request_json']);self.assertEqual(snapshot['profile']['model'],'gemma4:12b-it-q4_K_M')
+        snapshot=storage.decode(job['request_json']);self.assertEqual(snapshot['profile']['model'],model_slots.DEFAULT_MODEL)
         generated={'questions':[{'stem':'Which target preserves the original token?','options':{'A':'Original token','B':'Mask symbol','C':'Padding','D':'Random token'},'answer':'A','explanation':'標籤應保持原始詞元，否則學到遮罩符號而無法復原內容。','source_unit_id':'book-2.3','source_excerpt':text}]}
         with patch.object(exam_studio,'llm_json',return_value=generated):exam_studio.process(job)
         details=admin.call('/api/admin/exam/jobs/'+jid);self.assertEqual(details['result']['metadata']['total_score'],6)
@@ -69,7 +69,7 @@ class StudioWorkflow(unittest.TestCase):
         with patch.object(model_slots,'available',return_value=['gemma4-my-lora:v1']),patch.object(model_slots,'request',return_value={'capabilities':['vision']}):
             admin.call('/api/admin/model-slots/activate',{'role':'generation','profile_id':profile})
         self.assertEqual(model_slots.selected('generation')['model'],'gemma4-my-lora:v1')
-        self.assertEqual(snapshot['profile']['model'],'gemma4:12b-it-q4_K_M')
+        self.assertEqual(snapshot['profile']['model'],model_slots.DEFAULT_MODEL)
 
 class StudioValidation(unittest.TestCase):
     def test_source_segment_reference_is_bound_to_frozen_material(self):
