@@ -10,6 +10,7 @@ async function selfPractice() {
                     ${field('practice-material', '教材', `<select id="practice-material">${data.materials.map(material =>
                         `<option value="${esc(material.id)}">${esc(studioSubjects[material.subject] || material.subject)} · ${esc(material.title)}</option>`
                     ).join('')}</select>`)}
+                    <button type="button" id="practice-read-material" hidden>閱讀教材</button>
                     ${field('practice-topic', '想練習的主題（選填）', input('practice-topic', 'text', '', 'maxlength="180"'))}
                     ${field('practice-count', '題數', '<select id="practice-count"><option value="3">3 題</option><option value="5">5 題</option></select>')}
                     <button class="btn primary" id="practice-generate">生成單選題</button>
@@ -27,6 +28,24 @@ async function selfPractice() {
         </section>`);
     const form = $('#self-practice-form');
     if (form) {
+        const material = $('#practice-material');
+        const read = $('#practice-read-material');
+        const readable = new Set(data.materials.filter(item => item.has_handout).map(item => item.id));
+        const updateReader = () => { read.hidden = !readable.has(material.value); };
+        material.addEventListener('change', updateReader);
+        updateReader();
+        read.onclick = busy(read, async () => {
+            const handout = await api('/api/self-practice/materials/' + encodeURIComponent(material.value));
+            content(head('', handout.title, handout.locator,
+                '<button class="btn" id="back-self-practice">返回自主練習</button>') + `
+                <section class="window teaching-pack" aria-labelledby="practice-handout-heading">
+                    <div class="title-bar"><div class="title-bar-text" id="practice-handout-heading"
+                        role="heading" aria-level="2">教材內容</div></div>
+                    <div class="window-body sunken-panel teaching-pack-text" data-no-i18n>${esc(handout.text)}</div>
+                </section>`);
+            bind('#back-self-practice', 'click', () => navigate('selfpractice'));
+            $('#back-self-practice').focus();
+        });
         form.onsubmit = busy($('#practice-generate'), async () => {
             const status = $('#practice-status');
             const navigation = state.navigation;

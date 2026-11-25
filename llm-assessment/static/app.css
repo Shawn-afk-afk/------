@@ -3,3 +3,14 @@
 @media(min-width:1500px){.main{padding-left:58px;padding-right:58px}}@media(max-width:1100px){.main{padding:24px}.layout{grid-template-columns:205px minmax(0,1fr)}.stats{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}.filters{grid-template-columns:1fr 1fr}.workbench{grid-template-columns:180px minmax(0,1fr)}.review-grid{grid-template-columns:1fr}.hero-art{display:none}}@media(max-width:750px){.layout{display:block}.sidebar{position:relative;height:auto;padding:16px 20px}.brand{font-size:20px}.brand img{width:30px;height:30px}.sidebar .nav-heading,.side-footer{display:none}.nav{flex-direction:row;margin-top:16px;overflow:auto;gap:6px}.nav button{white-space:nowrap;padding:10px 12px;font-size:12px}.nav-icon{display:none}.main{padding:22px 17px}.topbar{margin-bottom:24px}.page-head{align-items:flex-start;flex-direction:column;gap:15px}h1{font-size:26px}.hero{padding:24px}.hero h2{font-size:21px}.stats{gap:10px}.stat{padding:17px}.stat strong{font-size:27px}.panel{padding:18px}.form-grid{grid-template-columns:1fr;gap:0}.workbench{display:block}.question-nav{position:relative;top:0;margin-bottom:17px}.question-nav>h3,.question-nav .note{display:none}.question-nav .nav-items{display:flex;overflow:auto}.question-nav button{min-width:130px}.work-head{align-items:flex-start}.work-head h2{font-size:18px}.work-footer{flex-wrap:wrap}.match-row{grid-template-columns:1fr 1fr;gap:10px}.login{grid-template-columns:1fr}.login-story{padding:26px}.login-story h1{font-size:30px;margin:35px 0 15px}.login-story p,.login-story footer,.login-tags{display:none}.login-form{padding:35px 25px}.task-card{padding:20px;align-items:flex-start;flex-direction:column;gap:16px}.report-score{font-size:32px}.report-hero{padding:20px}.filters{gap:8px}.btn{font-size:12px}.topbar .pill{font-size:10px}}
 
 @media(max-width:750px){.mobile-menu{display:block}}
+
+.teaching-pack {
+  margin-block: 1rem;
+  min-width: 0;
+}
+
+.teaching-pack-text {
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

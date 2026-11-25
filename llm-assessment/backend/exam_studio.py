@@ -2,7 +2,7 @@
 import base64,copy,hashlib,io,json,math,re,sys,tempfile,threading,time
 from pathlib import Path
 from storage import db,encode,decode,uid,audit,question,latest_questions
-import model_slots,analysis,dense_rag
+import model_slots,analysis,dense_rag,teaching_pack
 
 PACKAGES=Path(__file__).resolve().parents[1]/'.runtime/packages'
 if PACKAGES.exists():sys.path.insert(0,str(PACKAGES))
@@ -17,6 +17,10 @@ def initialize(c):
     CREATE TABLE IF NOT EXISTS exam_exports(id TEXT PRIMARY KEY,job_id TEXT NOT NULL REFERENCES exam_jobs(id),name TEXT NOT NULL,mime TEXT NOT NULL,content BLOB NOT NULL);
     CREATE TABLE IF NOT EXISTS exam_imports(job_id TEXT PRIMARY KEY REFERENCES exam_jobs(id),question_ids_json TEXT NOT NULL);''')
     c.execute('CREATE TABLE IF NOT EXISTS exam_edits(id TEXT PRIMARY KEY,job_id TEXT NOT NULL REFERENCES exam_jobs(id),actor_id TEXT NOT NULL REFERENCES users(id),previous_json TEXT NOT NULL,created_at REAL NOT NULL)')
+    c.execute('''CREATE TABLE IF NOT EXISTS exam_teaching_pack_imports(
+        resource_id TEXT NOT NULL, version_id TEXT NOT NULL, subject TEXT NOT NULL,
+        material_id TEXT NOT NULL UNIQUE REFERENCES exam_materials(id),
+        PRIMARY KEY(resource_id, version_id, subject))''')
 
 def core():
     from vendor.examcrafter import agent_service as agent,rag_service as rag,generate_exam_docx as word,chart_registry as charts
@@ -262,6 +266,34 @@ def import_bank(c,job,u):
     c.execute('INSERT INTO exam_imports VALUES(?,?)',(job['id'],encode(ids)));return ids
 
 def routes(h,path,b,args,u,write):
+    if path=='/api/admin/exam/teaching-pack' and write:
+        action=b.get('action')
+        check(action in ('preview','import'),'教材包操作不支援')
+        try:
+            pack=teaching_pack.read(b.get('data'))
+        except ValueError as exc:
+            raise ExamError(str(exc)) from exc
+        if action=='preview':
+            return h.send({k:pack[k] for k in ('title','type_label','version','question_count','text')})
+        subject=b.get('subject')
+        check(isinstance(subject,str),'請選擇教材科目')
+        check(subject!='LLM','LLM 範圍請載入已保存的第一／二章來源；教材包請選一般科目')
+        identity=(pack['resource_id'],pack['version_id'],subject)
+        with db() as c:
+            c.execute('BEGIN IMMEDIATE')
+            previous=c.execute('''SELECT m.id,m.archived,m.text FROM exam_teaching_pack_imports i
+                JOIN exam_materials m ON m.id=i.material_id
+                WHERE i.resource_id=? AND i.version_id=? AND i.subject=?''',identity).fetchone()
+            if previous:
+                check(not previous['archived'],'這個版本已匯入此科並封存')
+                check(previous['text']==pack['text'],'相同版本識別已有不同的教材內容')
+                mid=previous['id']
+            else:
+                locator=f"AI 教學平台教材包 · {pack['type_label']} · v{pack['version']}"
+                mid=store_material(c,pack['title'],pack['text'],subject,locator=locator)
+                c.execute('INSERT INTO exam_teaching_pack_imports VALUES(?,?,?,?)',(*identity,mid))
+                audit(c,u['id'],'exam_teaching_pack_imported',mid,{'version':pack['version'],'questions':pack['question_count']})
+        return h.send({'id':mid,'existing':previous is not None})
     if path=='/api/admin/exam/materials':
         with db() as c:
             if write:

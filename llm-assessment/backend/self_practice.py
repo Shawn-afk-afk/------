@@ -147,7 +147,9 @@ def routes(path, body, user, write):
         raise PracticeError('自主練習供學生帳號使用', 403)
     if path == '/api/self-practice' and not write:
         with db() as c:
-            materials = c.execute("""SELECT m.id,m.title,m.subject FROM exam_materials m
+            materials = c.execute("""SELECT m.id,m.title,m.subject,
+                EXISTS(SELECT 1 FROM exam_teaching_pack_imports i WHERE i.material_id=m.id) AS has_handout
+                FROM exam_materials m
                 JOIN self_practice_materials s ON s.material_id=m.id WHERE m.archived=0
                 ORDER BY m.subject,m.title""").fetchall()
             history = c.execute("""SELECT q.id,q.title,q.topic,q.created_at,
@@ -156,7 +158,21 @@ def routes(path, body, user, write):
                 JOIN exam_materials m ON m.id=q.material_id
                 WHERE q.student_id=? AND m.archived=0 ORDER BY q.created_at DESC LIMIT 50""",
                 (user['id'],)).fetchall()
-        return {'materials': [dict(row) for row in materials], 'history': [dict(row) for row in history]}
+        views = []
+        for row in materials:
+            material = {key: row[key] for key in ('id', 'title', 'subject')}
+            if row['has_handout']:
+                material['has_handout'] = True
+            views.append(material)
+        return {'materials': views, 'history': [dict(row) for row in history]}
+    handout = re.fullmatch(r'/api/self-practice/materials/([a-f0-9-]{36})', path)
+    if handout and not write:
+        with db() as c:
+            material = shared_material(c, handout[1])
+            if not c.execute('SELECT 1 FROM exam_teaching_pack_imports WHERE material_id=?',
+                             (handout[1],)).fetchone():
+                raise PracticeError('找不到可閱讀的教材包', 404)
+        return {key: material[key] for key in ('title', 'locator', 'text')}
     if path == '/api/self-practice' and write:
         material_id, topic, count = body.get('material_id'), body.get('topic', ''), body.get('count')
         if not isinstance(material_id, str) or not isinstance(topic, str) or len(topic) > 180 or type(count) is not int or count not in (3, 5):
